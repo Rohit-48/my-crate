@@ -33,17 +33,51 @@ pub struct ParsedNote {
     pub tags: Vec<String>,
     pub toc: Vec<Heading>,
     pub has_latex: bool,
-    pub frontmatter: Value,
+    pub formatter: Value,
 }
 
 pub fn parse_note(path: &Path) -> Result<ParsedNote, Box<dyn Error>> {
+    // reading file
     let raw = std::fs::read_to_string(path)?;
+
+    // split formatter for properties attributes
     let (formatter_str, markdown) = split_formatter(&raw);
 
-    println!("formatter: {:?}", formatter_str);
-    println!("markdown: {:?}", markdown);
+    // parse formatter for title, des, tag, toc, yaml
+    let (fm_title, description, tags, formatter) = parse_formatter(formatter_str);
 
-    todo!()
+    // slugs stuff
+    let slug =path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("untitled")
+        .to_string();
+
+    // wikilinks and embeds
+    let (links, embeds) = extract_links(markdown);
+
+    // parse content → html, toc, has_latex
+    let (html, toc, has_latex) =  parse_content(markdown);
+
+    // resolve title — formatter title → first heading → filename
+    let title = fm_title
+        .or_else(|| toc.first().map(|h| h.text.clone()))
+        .unwrap_or_else(|| slug.clone());
+
+    Ok(ParsedNote {
+        slug,
+        title,
+        description,
+        raw_md: markdown.to_string(),
+        html,
+        links,
+        embeds,
+        tags,
+        toc,
+        has_latex,
+        formatter,
+    })
+
 }
 
 // spilt-formatter to split md file attributes
@@ -93,7 +127,7 @@ fn parse_formatter(yaml_str: &str) -> (Option<String>, Option<String>, Vec<Strin
 
     // grabing desciptions
     let description = yaml
-        .get("desciption")
+        .get("description")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
