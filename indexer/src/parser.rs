@@ -100,11 +100,9 @@ fn extract_links(markdown: &str) -> (Vec<String>, Vec<String>) {
     let mut wikilinks = Vec::new();
     let mut embeds = Vec::new();
 
-    let re = Regex::new(r"(!)?\[\[([^\]|]+)(?:\|[^\]]+)?\]\]").unwrap(); // read regex to understand that god lang
-    for cap in re.captures_iter(markdown) {
+    for cap in LINK_RE.captures_iter(markdown) {  // using static
         let is_embed = cap.get(1).is_some();
         let target = cap.get(2).map(|m| m.as_str().trim().to_string()).unwrap();
-
         if is_embed {
             embeds.push(target);
         } else {
