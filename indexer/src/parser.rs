@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use pulldown_cmark::{Options, Parser};
 use regex::Regex;
 use serde_json::Value;
 use std::error::Error;
@@ -81,13 +81,19 @@ fn extract_links(markdown: &str) -> (Vec<String>, Vec<String>) {
 }
 
 // title and tags
-fn parse_formatter(yaml_str: &str) -> (Option<String>, Vec<String>, Value) {
+fn parse_formatter(yaml_str: &str) -> (Option<String>, Option<String>, Vec<String>, Value) {
     let yaml: Value =
         serde_yaml::from_str(yaml_str).unwrap_or(Value::Object(serde_json::Map::new()));
 
     // grabing the title
     let title = yaml
         .get("title")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    // grabing desciptions
+    let description = yaml
+        .get("desciption")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
@@ -103,8 +109,68 @@ fn parse_formatter(yaml_str: &str) -> (Option<String>, Vec<String>, Value) {
             tags.push(single_tag.to_string());
         }
     }
-    (title, tags, yaml) // (Option<String>, Vec<String>, Value)
+    (title, description, tags, yaml) // (Option<String>, Vec<String>, Value)
 }
 
 // parsig body(content)
+fn parse_content(markdown: &str) -> (String, Vec<Heading>, bool) {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
 
+    let parser = Parser::new_ext(markdown, options);
+    let mut toc = Vec::new();
+    let mut has_latex = false;
+
+    // checking latext
+    if markdown.contains('$') {
+        has_latex = true;
+    }
+
+    let mut events = Vec::new();
+    let mut in_heading = false;
+    let mut heading_level = HeadingLevel::H1;
+    let mut heading_text = String::new();
+
+    for event in parser {
+        match &event {
+            pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading { level, .. }) => {
+                in_heading = true;
+                heading_level = match level {
+                    pulldown_cmark::HeadingLevel::H1 => HeadingLevel::H1,
+                    pulldown_cmark::HeadingLevel::H2 => HeadingLevel::H2,
+                    pulldown_cmark::HeadingLevel::H3 => HeadingLevel::H3,
+                    pulldown_cmark::HeadingLevel::H4 => HeadingLevel::H4,
+                    pulldown_cmark::HeadingLevel::H5 => HeadingLevel::H5,
+                    pulldown_cmark::HeadingLevel::H6 => HeadingLevel::H6,
+                };
+                heading_text.clear();
+            }
+            pulldown_cmark::Event::Text(text) if in_heading => {
+                heading_text.push_str(text);
+            }
+            pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(_)) => {
+                if in_heading {
+                    let anchor = heading_text
+                        .to_lowercase()
+                        .replace(' ', "-")
+                        .replace(|c: char| !c.is_alphabetic() && c != '-', "");
+                    toc.push(Heading {
+                        level: heading_level,
+                        text: heading_text.clone(),
+                        anchor,
+                    });
+                    in_heading = false;
+                }
+            }
+            _ => {}
+        }
+        events.push(event);
+    }
+
+    let mut html = String::new();
+    pulldown_cmark::html::push_html(&mut html, events.into_iter());
+
+    (html, toc, has_latex)
+}
