@@ -10,3 +10,4 @@ serde_yaml = "0.9"
 pulldown-cmark = "0.11.3"
 regex = "1"
 lazy_static = "1.5.0"
+rusqlite = { version = "0.38.0", features = ["bundled"] }

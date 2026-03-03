@@ -47,7 +47,7 @@ pub fn parse_note(path: &Path) -> Result<ParsedNote, Box<dyn Error>> {
     let (fm_title, description, tags, formatter) = parse_formatter(formatter_str);
 
     // slugs stuff
-    let slug =path
+    let slug = path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("untitled")
@@ -57,7 +57,7 @@ pub fn parse_note(path: &Path) -> Result<ParsedNote, Box<dyn Error>> {
     let (links, embeds) = extract_links(markdown);
 
     // parse content → html, toc, has_latex
-    let (html, toc, has_latex) =  parse_content(markdown);
+    let (html, toc, has_latex) = parse_content(markdown);
 
     // resolve title — formatter title → first heading → filename
     let title = fm_title
@@ -77,7 +77,6 @@ pub fn parse_note(path: &Path) -> Result<ParsedNote, Box<dyn Error>> {
         has_latex,
         formatter,
     })
-
 }
 
 // spilt-formatter to split md file attributes
@@ -100,7 +99,8 @@ fn extract_links(markdown: &str) -> (Vec<String>, Vec<String>) {
     let mut wikilinks = Vec::new();
     let mut embeds = Vec::new();
 
-    for cap in LINK_RE.captures_iter(markdown) {  // using static
+    for cap in LINK_RE.captures_iter(markdown) {
+        // using static
         let is_embed = cap.get(1).is_some();
         let target = cap.get(2).map(|m| m.as_str().trim().to_string()).unwrap();
         if is_embed {
