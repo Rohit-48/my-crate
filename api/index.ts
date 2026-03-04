@@ -1,15 +1,14 @@
-import { Hono } from 'hono'
+import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { startTime } from 'hono/timing';
+import notes from "./routes/notes";
 
-
-const app = new Hono()
+const app = new Hono();
 
 app.use("/*", cors());
-
-app.get("/", (c) => c.json({status: "Dandy"}));
+app.get("/", (c) => c.json({ status: "ok" }));
+app.route("/api/notes", notes);
 
 export default {
   port: process.env.PORT ?? 3001,
-  fetch: app.fetch
+  fetch: app.fetch,
 };
