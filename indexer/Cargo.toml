@@ -11,3 +11,6 @@ pulldown-cmark = "0.11.3"
 regex = "1"
 lazy_static = "1.5.0"
 rusqlite = { version = "0.38.0", features = ["bundled"] }
+walkdir = "2"
+rayon = "1"
+clap = { version = "4", features = ["derive"] }
