@@ -38,3 +38,13 @@ fn create_tables(conn: &Connection) -> Result<()> {
     )?;
     Ok(())
 }
+
+pub fn  write_all(conn: &Connection, parsed_note: &[ParsedNote]) -> Result<()> {
+    conn.execute_batch("
+            DELETE FROM tags;
+            DELETE FROM links;
+            DELETE FROM notes;"
+    )?;
+    let tx = conn.unchecked_transaction()?;
+    todo!()
+}
