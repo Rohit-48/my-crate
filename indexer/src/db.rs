@@ -39,12 +39,60 @@ fn create_tables(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-pub fn  write_all(conn: &Connection, parsed_note: &[ParsedNote]) -> Result<()> {
+pub fn  write_all(conn: &Connection, notes: &[ParsedNote]) -> Result<()> {
     conn.execute_batch("
             DELETE FROM tags;
             DELETE FROM links;
             DELETE FROM notes;"
     )?;
     let tx = conn.unchecked_transaction()?;
-    todo!()
+
+
+    for note in notes {
+        let tags_json = serde_json::to_string(&note.tags).unwrap();
+        let toc_json = serde_json::to_string(&note.toc).unwrap();
+        let formatter_json = serde_json::to_string(&note.formatter).unwrap();
+
+        tx.execute(
+            "INSERT OR REPLACE INTO notes\
+            (slug, title, description, raw_md, html, tags, toc, has_latex, formatter)\
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                note.slug,
+                note.title,
+                note.description,
+                note.raw_md,
+                note.html,
+                tags_json,
+                toc_json,
+                note.has_latex as i32,
+                formatter_json,
+            ],
+        )?;
+
+        for link in &note.links{
+            tx.execute(
+                "INSERT OR REPLACE INTO links (source_slug, target_slug, is_embed)\
+                VALUES (?1, ?2, 0)",
+                params![note.slug,link],
+            )?;
+        }
+
+        for embed in &note.embeds {
+            tx.execute(
+                "INSERT OR REPLACE INTO links (source_slug, target_slug, is_embed)
+                VALUES (?1, ?2, 1)",
+                params![note.slug, embed],
+            )?;
+        }
+
+        for tag in &note.tags{
+            tx.execute(
+                "INSERY OR REPLACE INTO tag(tag, note_slug) VALUES(?1, ?2)",
+                params![tag ,note.slug],
+            )?;
+        }
+    }
+    tx.commit()?;
+    Ok(())
 }

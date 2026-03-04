@@ -4,8 +4,9 @@ use serde_json::Value;
 use std::error::Error;
 use std::path::Path;
 use std::sync::LazyLock;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, PartialEq, Clone, Copy)] // Derive Macros
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)] // Derive Macros
 pub enum HeadingLevel {
     H1 = 1,
     H2 = 2,
@@ -14,7 +15,7 @@ pub enum HeadingLevel {
     H5 = 5,
     H6 = 6,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Heading {
     pub level: HeadingLevel,
     pub text: String,
