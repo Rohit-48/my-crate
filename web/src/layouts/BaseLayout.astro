@@ -1,13 +1,29 @@
 ---
 import "../styles/global.css";
+import SearchBar from "../components/SearchBar.tsx";
+import GraphView from "../components/GraphView.tsx";
+
+
+const API = "http://localhost:3001";
+const graphRes = await fetch(`${API}/api/graph`);
+const graphData = await graphRes.json();
+const graph = Array.isArray(graphData?.nodes) ? graphData : { nodes: [], edges: [] };
+
+interface TocItem {
+  level: string;
+  text: string;
+  anchor: string;
+}
 
 interface Props {
   title: string;
   notes?: { slug: string; title: string; tags?: string[] }[];
   currentSlug?: string;
   currentPage?: "notes" | "graph";
+  withMath?: boolean;
+  toc?: TocItem[];
 }
-const { title, notes = [], currentSlug, currentPage } = Astro.props;
+const { title, notes = [], currentSlug, currentPage, withMath, toc = [] } = Astro.props;
 ---
 
 <!doctype html>
@@ -22,16 +38,40 @@ const { title, notes = [], currentSlug, currentPage } = Astro.props;
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    {withMath && ( // Conditional KaTeX links (link + script) when withMath is true 
+      <>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" />
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" />
+      </>
+    )}
   </head>
-  <body class="font-sans bg-neutral-950 text-neutral-100 min-h-screen flex antialiased">
-    <!-- Left sidebar: Explorer -->
-    <aside class="w-56 lg:w-64 shrink-0 border-r border-neutral-800/80 flex flex-col min-h-screen sticky top-0">
+  <body class="font-sans  bg-neutral-950  text-neutral-100 min-h-screen flex justify-center antialiased selection:bg-yellow-400 hover:selection:text-white">
+    <!-- Mobile hamburger -->
+    <button
+      type="button"
+      id="sidebar-toggle"
+      class="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-neutral-800/80 border border-neutral-700 text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors"
+      aria-label="Toggle sidebar"
+    >
+      <svg id="icon-menu" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+      <svg id="icon-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+    <!-- Mobile overlay -->
+    <div id="sidebar-overlay" class="lg:hidden fixed inset-0 bg-black/60 z-40 opacity-0 pointer-events-none transition-opacity" aria-hidden="true"></div>
+    <div class="w-full max-w-340 flex min-h-screen px-4 sm:px-6 lg:px-8">
+      <!-- Left sidebar: Explorer -->
+    <aside id="sidebar" class="w-56 lg:w-64 shrink-0 border-r border-neutral-800/80 flex flex-col min-h-screen fixed inset-y-0 left-0 z-40 lg:relative lg:inset-auto -translate-x-full lg:translate-x-0 transition-transform duration-200 bg-neutral-950">
       <div class="p-4 border-b border-neutral-800/80">
-        <a href="/" class="text-lg font-semibold tracking-tight text-white hover:text-neutral-300 transition-colors">
-          my notes
+        <a href="/" class="text-lg font-semibold tracking-tight text-yellow-500 hover:text-white transition-colors">
+          MY-CRATE
         </a>
       </div>
-      <nav class="p-3 flex flex-col gap-1 border-b border-neutral-800/80">
+      <nav class="p-3 flex flex-col gap-1">
         <a
           href="/"
           class={`text-sm px-2 py-1 rounded transition-colors ${
@@ -49,9 +89,12 @@ const { title, notes = [], currentSlug, currentPage } = Astro.props;
           graph
         </a>
       </nav>
+      <div class="p-3 border-b border-neutral-800/80">
+        <SearchBar client:load />
+      </div> 
       {notes.length > 0 && (
         <div class="flex-1 overflow-y-auto p-3">
-          <p class="text-xs font-medium text-neutral-500 uppercase tracking-wider px-2 mb-2">Explorer</p>
+          <p class="text-xs font-medium text-yellow-500 uppercase tracking-wider px-2 mb-2 ">Explorer</p>
           <ul class="space-y-0.5">
             {notes.map((note: { slug: string; title: string }) => (
               <li>
@@ -73,7 +116,7 @@ const { title, notes = [], currentSlug, currentPage } = Astro.props;
     </aside>
 
     <!-- Center: Main content -->
-    <main class="flex-1 min-w-0 flex flex-col">
+    <main class="flex-1 min-w-0 flex flex-col pl-12 lg:pl-0">
       <article class="flex-1 overflow-auto">
         <div class="max-w-3xl mx-auto px-6 py-8 lg:py-12">
           <slot />
@@ -83,5 +126,83 @@ const { title, notes = [], currentSlug, currentPage } = Astro.props;
         built by me
       </footer>
     </main>
+
+    <!-- Right sidebar: ToC (note pages) or Graph -->
+    <aside class="w-64 shrink-0 border-l border-neutral-800/80 hidden lg:flex flex-col p-4 sticky top-0 self-start">
+      {toc.length > 0 ? (
+        <>
+          <p class="text-xs font-medium text-yellow-500 uppercase tracking-wider mb-3">On this page</p>
+          <nav class="space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
+            {toc.map((item: TocItem) => (
+              <a
+                href={`#${item.anchor}`}
+                class={`block text-sm text-neutral-400 hover:text-amber-400 transition-colors truncate ${
+                  item.level === "H1" ? "pl-0 font-medium" : item.level === "H2" ? "pl-2" : "pl-4"
+                }`}
+              >
+                {item.text}
+              </a>
+            ))}
+          </nav>
+        </>
+      ) : (
+        <>
+          <p class="text-xs font-medium text-yellow-500 uppercase tracking-wider mb-3">Graph</p>
+          <div class="h-[350px] w-full rounded-lg border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+            <GraphView client:load nodes={graph?.nodes ?? []} edges={graph?.edges ?? []} />
+          </div>
+        </>
+      )}
+    </aside>
+    </div>
+
+    <script is:inline>
+      (function () {
+        const toggle = document.getElementById("sidebar-toggle");
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("sidebar-overlay");
+        const iconMenu = document.getElementById("icon-menu");
+        const iconClose = document.getElementById("icon-close");
+
+        function open() {
+          sidebar?.classList.remove("-translate-x-full");
+          overlay?.classList.remove("opacity-0", "pointer-events-none");
+          iconMenu?.classList.add("hidden");
+          iconClose?.classList.remove("hidden");
+        }
+        function close() {
+          sidebar?.classList.add("-translate-x-full");
+          overlay?.classList.add("opacity-0", "pointer-events-none");
+          iconMenu?.classList.remove("hidden");
+          iconClose?.classList.add("hidden");
+        }
+        function toggleSidebar() {
+          sidebar?.classList.contains("-translate-x-full") ? open() : close();
+        }
+
+        toggle?.addEventListener("click", toggleSidebar);
+        overlay?.addEventListener("click", close);
+      })();
+    </script>
+    {withMath && (
+      <script is:inline>
+        (function () {
+          const opts = {
+            delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }],
+            throwOnError: false,
+          };
+          function run() {
+            const el = document.querySelector(".note-content");
+            if (el && typeof renderMathInElement === "function") {
+              renderMathInElement(el, opts);
+              return;
+            }
+            setTimeout(run, 30);
+          }
+          if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+          else run();
+        })();
+      </script>
+    )}
   </body>
 </html>

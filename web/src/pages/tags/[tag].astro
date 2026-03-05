@@ -1,0 +1,60 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const { tag } = Astro.params;
+const API = "http://localhost:3001";
+
+const [tagRes, notesRes] = await Promise.all([
+  fetch(`${API}/api/tags/${tag}`),
+  fetch(`${API}/api/notes`),
+]);
+
+const tagNotes = await tagRes.json();
+const notes = await notesRes.json();
+
+if (!Array.isArray(tagNotes)) {
+  return new Response(null, { status: 404, statusText: "Not found" });
+}
+---
+
+<BaseLayout title={`#${tag}`} notes={notes} currentPage="notes">
+  <h1 class="text-3xl font-bold mb-2 tracking-tight">#{tag}</h1>
+  <p class="text-neutral-400 mb-8 text-sm">
+    {tagNotes.length} note{tagNotes.length !== 1 ? "s" : ""}
+  </p>
+
+  <ul class="flex flex-col gap-4">
+    {
+      tagNotes.map((note: any) => (
+        <li class="group p-5 rounded-xl border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-900/50 transition-all duration-200">
+          <a href={`/notes/${note.slug}`} class="block">
+            <span class="font-medium text-white">{note.title}</span>
+            {note.description && (
+              <p class="text-sm text-neutral-400 mt-1.5 leading-relaxed">
+                {note.description}
+              </p>
+            )}
+          </a>
+          {note.tags?.length > 0 && (
+            <div class="flex flex-wrap gap-2 mt-3">
+              {note.tags.map((t: string) => (
+                <a
+                  href={`/tags/${t}`}
+                  class={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                    t === tag
+                      ? "bg-amber-500/30 text-amber-300 border-amber-500/50"
+                      : "bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30"
+                  }`}
+                >
+                  {t}
+                </a>
+              ))}
+            </div>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</BaseLayout>

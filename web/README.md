@@ -9,4 +9,3 @@ interface Props {
 
 const { title } = Astro.props;
 ```
-

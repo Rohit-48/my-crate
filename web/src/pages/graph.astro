@@ -1,0 +1,22 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../layouts/BaseLayout.astro";
+import GraphView from "../components/GraphView.tsx";
+
+const API = "http://localhost:3001";
+const [graphRes, notesRes] = await Promise.all([
+  fetch(`${API}/api/graph`),
+  fetch(`${API}/api/notes`),
+]);
+
+const graph = await graphRes.json();
+const notes = await notesRes.json();
+---
+
+<BaseLayout title="Graph" notes={notes} currentPage="graph">
+  <h1 class="text-3xl font-bold mb-8 tracking-tight">Graph</h1>
+  <div class="w-full h-[600px] rounded-xl border border-neutral-800 bg-neutral-900/50">
+    <GraphView client:load nodes={graph.nodes} edges={graph.edges} />
+  </div>
+</BaseLayout>
