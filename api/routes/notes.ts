@@ -1,6 +1,15 @@
 import { Hono } from "hono";
 import db from "../db";
 
+/** Converts wikilinks [[slug]] and [[slug|display]] and embeds ![[...]] to anchor tags */
+function processHtml(html: string): string {
+  return html
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '<a href="/notes/$1">$2</a>')
+    .replace(/!\[\[([^\]|]+)\|([^\]]+)\]\]/g, '<a href="/notes/$1">$2</a>')
+    .replace(/!\[\[([^\]]+)\]\]/g, '<a href="/notes/$1">$1</a>')
+    .replace(/\[\[([^\]]+)\]\]/g, '<a href="/notes/$1">$1</a>');
+}
+
 const notes = new Hono();
 
 notes.get("/", (c)=>{
@@ -27,6 +36,7 @@ notes.get("/:slug", (c) => {
     const n = note as any;
     return c.json({
       ...n,
+      html: processHtml(n.html),
       tags: JSON.parse(n.tags),
       toc: JSON.parse(n.toc),
       formatter: JSON.parse(n.formatter),
