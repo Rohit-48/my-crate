@@ -1,0 +1,43 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const { slug } = Astro.params;
+const API = "http://localhost:3001";
+const [noteRes, notesRes] = await Promise.all([
+  fetch(`${API}/api/notes/${slug}`),
+  fetch(`${API}/api/notes`),
+]);
+const note = await noteRes.json();
+const notes = await notesRes.json();
+
+if (noteRes.status === 404 || note.error) {
+  return new Response(null, { status: 404, statusText: "Not found" });
+}
+---
+
+<BaseLayout title={note.title} notes={notes} currentSlug={slug}>
+  <article
+    class="prose prose-neutral prose-invert max-w-none prose-headings:font-semibold prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline prose-pre:bg-neutral-900 prose-pre:border prose-pre:border-neutral-800"
+  >
+    <header class="not-prose mb-8">
+      <h1 class="text-3xl font-bold tracking-tight text-white">{note.title}</h1>
+      {
+        note.tags?.length > 0 && (
+          <div class="flex flex-wrap gap-2 mt-4">
+            {note.tags.map((tag: string) => (
+              <a
+                href={`/tags/${tag}`}
+                class="text-xs px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 hover:border-amber-500/50 transition-colors"
+              >
+                {tag}
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </header>
+    <div set:html={note.html} />
+  </article>
+</BaseLayout>

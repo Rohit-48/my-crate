@@ -1,0 +1,29 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const res = await fetch("http://localhost:3001/api/notes");
+const notes = await res.json();
+---
+
+<BaseLayout title="My Notes" notes={notes}>
+  <h1 class="text-3xl font-bold mb-10 tracking-tight">Notes</h1>
+  <ul class="flex flex-col gap-4">
+    {notes.map((note: any) => (
+      <li class="group p-5 rounded-xl border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-900/50 transition-all duration-200">
+        <a href={`/notes/${note.slug}`} class="block">
+          <span class="font-medium text-white group-hover:text-neutral-100">{note.title}</span>
+          {note.description && <p class="text-sm text-neutral-400 mt-1.5 leading-relaxed">{note.description}</p>}
+        </a>
+        {note.tags?.length > 0 && (
+          <div class="flex flex-wrap gap-2 mt-3">
+            {note.tags.map((tag: string) => (
+              <a href={`/tags/${tag}`} class="text-xs px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 hover:border-amber-500/50 transition-colors">
+                {tag}
+              </a>
+            ))}
+          </div>
+        )}
+      </li>
+    ))}
+  </ul>
+</BaseLayout>

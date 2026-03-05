@@ -1,0 +1,87 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  notes?: { slug: string; title: string; tags?: string[] }[];
+  currentSlug?: string;
+  currentPage?: "notes" | "graph";
+}
+const { title, notes = [], currentSlug, currentPage } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="font-sans bg-neutral-950 text-neutral-100 min-h-screen flex antialiased">
+    <!-- Left sidebar: Explorer -->
+    <aside class="w-56 lg:w-64 shrink-0 border-r border-neutral-800/80 flex flex-col min-h-screen sticky top-0">
+      <div class="p-4 border-b border-neutral-800/80">
+        <a href="/" class="text-lg font-semibold tracking-tight text-white hover:text-neutral-300 transition-colors">
+          my notes
+        </a>
+      </div>
+      <nav class="p-3 flex flex-col gap-1 border-b border-neutral-800/80">
+        <a
+          href="/"
+          class={`text-sm px-2 py-1 rounded transition-colors ${
+            currentPage !== "graph" ? "text-white bg-neutral-800/50" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+          }`}
+        >
+          notes
+        </a>
+        <a
+          href="/graph"
+          class={`text-sm px-2 py-1 rounded transition-colors ${
+            currentPage === "graph" ? "text-white bg-neutral-800/50" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+          }`}
+        >
+          graph
+        </a>
+      </nav>
+      {notes.length > 0 && (
+        <div class="flex-1 overflow-y-auto p-3">
+          <p class="text-xs font-medium text-neutral-500 uppercase tracking-wider px-2 mb-2">Explorer</p>
+          <ul class="space-y-0.5">
+            {notes.map((note: { slug: string; title: string }) => (
+              <li>
+                <a
+                  href={`/notes/${note.slug}`}
+                  class={`block text-sm px-2 py-1.5 rounded truncate transition-colors ${
+                    currentSlug === note.slug
+                      ? "bg-neutral-800 text-white"
+                      : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+                  }`}
+                >
+                  {note.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </aside>
+
+    <!-- Center: Main content -->
+    <main class="flex-1 min-w-0 flex flex-col">
+      <article class="flex-1 overflow-auto">
+        <div class="max-w-3xl mx-auto px-6 py-8 lg:py-12">
+          <slot />
+        </div>
+      </article>
+      <footer class="border-t border-neutral-800/80 px-6 py-4 text-sm text-neutral-500">
+        built by me
+      </footer>
+    </main>
+  </body>
+</html>
