@@ -13,3 +13,11 @@ my-crate is a lightweight, self-hosted publishing system built for Obsidian user
 - Renders markdown to HTML
 - Writes everything to SQLite in one transaction
 - CLI with --vault and --db flags
+
+GET /api/notes              ✅ list all notes
+GET /api/notes/:slug        ✅ full note with html, toc, frontmatter
+GET /api/notes/:slug/backlinks ✅ backlinks
+GET /api/graph              ✅ nodes + edges for D3
+GET /api/tags               ✅ all tags with counts
+GET /api/tags/:tag          ✅ notes by tag
+GET /api/search             ✅ full notes list for flexsearch
