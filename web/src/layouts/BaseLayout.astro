@@ -148,7 +148,7 @@ const { title, notes = [], currentSlug, currentPage, withMath, toc = [] } = Astr
       ) : (
         <>
           <p class="text-xs font-medium text-yellow-500 uppercase tracking-wider mb-3">Graph</p>
-          <div class="h-[350px] w-full rounded-lg border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+          <div class="h-[350px] w-[400px] rounded-lg border border-neutral-800 bg-neutral-900/50 overflow-hidden">
             <GraphView client:load nodes={graph?.nodes ?? []} edges={graph?.edges ?? []} />
           </div>
         </>

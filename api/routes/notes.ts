@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import db from "../db";
 
-/** Converts wikilinks [[slug]] and [[slug|display]] and embeds ![[...]] to anchor tags */
+
 function processHtml(html: string): string {
   return html
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '<a href="/notes/$1">$2</a>')
@@ -10,7 +10,7 @@ function processHtml(html: string): string {
     .replace(/\[\[([^\]]+)\]\]/g, '<a href="/notes/$1">$1</a>');
 }
 
-const notes = new Hono();
+const notes = new Hono(); 
 
 notes.get("/", (c)=>{
   const rows = db.prepare(`
