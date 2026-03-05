@@ -2,22 +2,48 @@
 my-crate is a lightweight, self-hosted publishing system built for Obsidian users who want full control over their knowledge. It transforms markdown notes into a fast, customizable, and developer-friendly website,without subscription lock-in.
 
 
-## Progress
-**Indexer is 100% done.**
-- Reads any .md file from the vault
-- Splits frontmatter from content
-- Extracts title, description, tags from YAML
-- Extracts [[wikilinks]] and ![[embeds]] with regex
-- Builds table of contents from headings
-- Detects LaTeX
-- Renders markdown to HTML
-- Writes everything to SQLite in one transaction
-- CLI with --vault and --db flags
+## Progress: Backend completed, Optimization after building frontend
 
-GET /api/notes              ✅ list all notes
-GET /api/notes/:slug        ✅ full note with html, toc, frontmatter
-GET /api/notes/:slug/backlinks ✅ backlinks
-GET /api/graph              ✅ nodes + edges for D3
-GET /api/tags               ✅ all tags with counts
-GET /api/tags/:tag          ✅ notes by tag
-GET /api/search             ✅ full notes list for flexsearch
+### Indexer
+
+ Reads .md files from vault
+ Splits frontmatter / markdown
+ Parses YAML — title, description, tags
+ Extracts [[wikilinks]]
+ Extracts ![[embeds]]
+ Extracts headings → ToC
+ Detects LaTeX
+ Renders markdown → HTML
+ Writes to SQLite — notes, links, tags tables
+ CLI with --vault and --db flags
+
+### API
+
+ GET /api/notes
+ GET /api/notes/:slug
+ GET /api/notes/:slug/backlinks
+ GET /api/graph
+ GET /api/tags
+ GET /api/tags/:tag
+ GET /api/search
+
+### Webhook
+
+ Listens on port 3002
+ Verifies HMAC signature
+ Runs git pull on vault
+ Spawns indexer
+
+
+## Things to do, [Optimization]
+Indexer  missing
+
+ Parallel processing with rayon — indexer.rs walks files sequentially right now
+ Incremental rebuilds — re-indexes everything on every run, not just changed files
+ graph.rs — we handle links in db.rs directly, graph.rs is empty
+ Search index JSON file > we planned to prebuild it, currently the API serves raw notes instead
+
+API missing
+
+ GET /api/search?q= — currently returns all notes, no actual search query handling
+
