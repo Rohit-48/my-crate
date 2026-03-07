@@ -10,14 +10,14 @@ Obsidian Publish is a fast, self-hosted platform that transforms your Obsidian v
 
 ## Features
 
-- **Instant Search** — Full-text search with FlexSearch, no backend query needed
-- **Backlinks** — Automatically discover linked references between notes
-- **Interactive Graph** — D3-powered force-directed graph of your note relationships
-- **LaTeX Support** — Renders math expressions with KaTeX
-- **Table of Contents** — Auto-generated ToC from headings, sticky sidebar navigation
-- **Tag System** — Browse notes by tags with dedicated tag pages
-- **Git Webhook** — Auto-reindex on push with HMAC verification
-- **Mobile-First** — Responsive design with hamburger navigation
+- **Instant Search** - Full-text search with FlexSearch, no backend query needed
+- **Backlinks** - Automatically discover linked references between notes
+- **Interactive Graph** - D3-powered force-directed graph of your note relationships
+- **LaTeX Support** - Renders math expressions with KaTeX
+- **Table of Contents** - Auto-generated ToC from headings, sticky sidebar navigation
+- **Tag System** - Browse notes by tags with dedicated tag pages
+- **Git Webhook** - Auto-reindex on push with HMAC verification
+- **Mobile-First** - Responsive design with hamburger navigation
 
 ---
 
@@ -397,7 +397,7 @@ obsidian-publish/
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
