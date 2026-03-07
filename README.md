@@ -4,6 +4,8 @@
 
 Obsidian Publish is a fast, self-hosted platform that transforms your Obsidian vault into a beautiful, browsable website. It indexes your markdown files, serves them via a REST API, and provides a modern web frontend with search, backlinks, and interactive graph visualization.
 
+![MY-CRATE Preview](./images/preview.png)
+
 ---
 
 ## Features
