@@ -17,41 +17,75 @@ const backlinks = await backlinksRes.json();
 if (noteRes.status === 404 || note.error) {
   return new Response(null, { status: 404, statusText: "Not found" });
 }
+
+const wordCount = note.raw_md ? note.raw_md.split(/\s+/).length : (note.html ? note.html.replace(/<[^>]*>/g, '').split(/\s+/).length : 0);
+const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 ---
 
 <BaseLayout title={note.title} notes={notes} currentSlug={slug} withMath={true} toc={note.toc ?? []}>
-  <article
-    class="prose prose-neutral prose-invert max-w-none prose-headings:font-semibold prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline prose-pre:bg-neutral-900 prose-pre:border prose-pre:border-neutral-800"
-  >
-    {note.tags?.length > 0 && (
-      <header class="not-prose mb-6">
-        <div class="flex flex-wrap gap-2">
+  <div id="reading-progress"></div>
+
+  <article>
+    <!-- Title -->
+    <h1 style="font-family: var(--font-display); font-weight: 800; font-size: 2rem; letter-spacing: -0.03em; line-height: 1.15; color: var(--color-text); margin: 0 0 12px;">
+      {note.title}
+    </h1>
+
+    <!-- Metadata: tags + reading time -->
+    <div class="flex items-center gap-3 flex-wrap" style="margin-bottom: 16px;">
+      {note.tags?.length > 0 && (
+        <span class="flex gap-2">
           {note.tags.map((tag: string) => (
             <a
               href={`/tags/${tag}`}
-              class="text-xs px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 hover:border-amber-500/50 transition-colors"
+              style="font-family: var(--font-body); font-size: 12px; color: var(--color-accent); text-decoration: none;"
             >
-              {tag}
+              #{tag}
+            </a>
+          ))}
+        </span>
+      )}
+      <span style="font-family: var(--font-body); font-size: 12px; color: var(--color-text-muted);">
+        {readingTime} min read
+      </span>
+    </div>
+
+    <!-- Separator -->
+    <div style="border-top: 1px solid var(--color-border); margin-bottom: 32px;"></div>
+
+    <!-- Content -->
+    <div class="prose-crate note-content" set:html={note.html} />
+
+    <!-- Backlinks -->
+    {Array.isArray(backlinks) && backlinks.length > 0 && (
+      <section style="border-top: 1px solid var(--color-border); margin-top: 48px; padding-top: 24px;">
+        <p class="section-label mb-3">Linked from</p>
+        <div class="flex flex-col gap-1.5">
+          {backlinks.map((b: { slug: string; title: string }) => (
+            <a
+              href={`/notes/${b.slug}`}
+              style="font-family: var(--font-body); font-size: 13px; color: var(--color-accent); text-decoration: none; transition: text-shadow 150ms ease-out;"
+              class="hover:underline hover:drop-shadow-[0_0_8px_var(--color-accent-border)]"
+            >
+              {b.title}
             </a>
           ))}
         </div>
-      </header>
-    )}
-    <div class="note-content" set:html={note.html} />
-
-    {Array.isArray(backlinks) && backlinks.length > 0 && (
-      <section class="not-prose mt-12 pt-8 border-t border-neutral-800">
-        <h2 class="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-3">Linked from</h2>
-        <ul class="space-y-1">
-          {backlinks.map((b: { slug: string; title: string }) => (
-            <li>
-              <a href={`/notes/${b.slug}`} class="text-amber-400 hover:text-amber-300 hover:underline transition-colors">
-                {b.title}
-              </a>
-            </li>
-          ))}
-        </ul>
       </section>
     )}
   </article>
+
+  <script is:inline>
+    (function () {
+      var bar = document.getElementById("reading-progress");
+      if (!bar) return;
+      function update() {
+        var docH = document.documentElement.scrollHeight - window.innerHeight;
+        var pct = docH > 0 ? (window.scrollY / docH) * 100 : 0;
+        bar.style.width = pct + "%";
+      }
+      window.addEventListener("scroll", update, { passive: true });
+      update();
+    })();
+  </script>
 </BaseLayout>

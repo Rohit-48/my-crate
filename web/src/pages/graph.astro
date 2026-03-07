@@ -15,8 +15,50 @@ const notes = await notesRes.json();
 ---
 
 <BaseLayout title="Graph" notes={notes} currentPage="graph">
-  <h1 class="text-3xl font-bold mb-8 tracking-tight">Graph</h1>
-  <div class="w-full h-[600px] rounded-xl border border-neutral-800 bg-neutral-900/50">
+  <header class="mb-6">
+    <p class="section-label mb-1">Graph</p>
+    <p
+      class="text-[13px]"
+      style="font-family: var(--font-body); color: var(--color-text-faint);"
+    >
+      {graph.nodes?.length ?? 0} nodes &middot; {graph.edges?.length ?? 0} edges
+    </p>
+  </header>
+
+  <div
+    class="relative w-full overflow-hidden bg-dot-grid"
+    style="height: calc(100vh - 200px); min-height: 400px; border: 1px solid var(--color-border); background-color: var(--color-bg-elevated);"
+  >
     <GraphView client:load nodes={graph.nodes} edges={graph.edges} />
+
+    <!-- Controls -->
+    <div
+      class="absolute bottom-4 right-4 flex flex-col gap-1.5 z-10"
+    >
+      <button
+        id="graph-zoom-in"
+        class="w-8 h-8 flex items-center justify-center text-sm transition-colors"
+        style="background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-muted); font-family: var(--font-body);"
+        aria-label="Zoom in"
+      >
+        +
+      </button>
+      <button
+        id="graph-zoom-out"
+        class="w-8 h-8 flex items-center justify-center text-sm transition-colors"
+        style="background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-muted); font-family: var(--font-body);"
+        aria-label="Zoom out"
+      >
+        &minus;
+      </button>
+      <button
+        id="graph-reset"
+        class="w-8 h-8 flex items-center justify-center text-[10px] transition-colors"
+        style="background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-muted); font-family: var(--font-body);"
+        aria-label="Reset view"
+      >
+        R
+      </button>
+    </div>
   </div>
 </BaseLayout>

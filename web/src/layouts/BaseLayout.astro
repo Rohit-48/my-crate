@@ -3,7 +3,6 @@ import "../styles/global.css";
 import SearchBar from "../components/SearchBar.tsx";
 import GraphView from "../components/GraphView.tsx";
 
-
 const API = "http://localhost:3001";
 const graphRes = await fetch(`${API}/api/graph`);
 const graphData = await graphRes.json();
@@ -31,14 +30,25 @@ const { title, notes = [], currentSlug, currentPage, withMath, toc = [] } = Astr
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>my-crate</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap"
       rel="stylesheet"
     />
-    {withMath && ( // Conditional KaTeX links (link + script) when withMath is true 
+    <script is:inline>
+      (function() {
+        var theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+    {withMath && (
       <>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" />
@@ -46,153 +56,255 @@ const { title, notes = [], currentSlug, currentPage, withMath, toc = [] } = Astr
       </>
     )}
   </head>
-  <body class="font-sans  bg-neutral-950  text-neutral-100 min-h-screen flex justify-center antialiased selection:bg-yellow-400 hover:selection:text-white">
+  <body>
     <!-- Mobile hamburger -->
     <button
       type="button"
       id="sidebar-toggle"
-      class="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-neutral-800/80 border border-neutral-700 text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors"
+      class="lg:hidden fixed top-3 left-3 z-50 w-9 h-9 flex items-center justify-center transition-colors"
+      style="background: var(--color-bg-elevated); border: 1px solid var(--color-border); color: var(--color-text-muted);"
       aria-label="Toggle sidebar"
     >
-      <svg id="icon-menu" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      <svg id="icon-menu" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
-      <svg id="icon-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      <svg id="icon-close" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
-    <!-- Mobile overlay -->
-    <div id="sidebar-overlay" class="lg:hidden fixed inset-0 bg-black/60 z-40 opacity-0 pointer-events-none transition-opacity" aria-hidden="true"></div>
-    <div class="w-full max-w-340 flex min-h-screen px-4 sm:px-6 lg:px-8">
-      <!-- Left sidebar: Explorer -->
-    <aside id="sidebar" class="w-56 lg:w-64 shrink-0 border-r border-neutral-800/80 flex flex-col min-h-screen fixed inset-y-0 left-0 z-40 lg:relative lg:inset-auto -translate-x-full lg:translate-x-0 transition-transform duration-200 bg-neutral-950">
-      <div class="p-4 border-b border-neutral-800/80">
-        <a href="/" class="text-lg font-semibold tracking-tight text-yellow-500 hover:text-white transition-colors">
-          MY-CRATE
-        </a>
-      </div>
-      <nav class="p-3 flex flex-col gap-1">
-        <a
-          href="/"
-          class={`text-sm px-2 py-1 rounded transition-colors ${
-            currentPage !== "graph" ? "text-white bg-neutral-800/50" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-          }`}
-        >
-          notes
-        </a>
-        <a
-          href="/graph"
-          class={`text-sm px-2 py-1 rounded transition-colors ${
-            currentPage === "graph" ? "text-white bg-neutral-800/50" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-          }`}
-        >
-          graph
-        </a>
-      </nav>
-      <div class="p-3 border-b border-neutral-800/80">
-        <SearchBar client:load />
-      </div> 
-      {notes.length > 0 && (
-        <div class="flex-1 overflow-y-auto p-3">
-          <p class="text-xs font-medium text-yellow-500 uppercase tracking-wider px-2 mb-2 ">Explorer</p>
-          <ul class="space-y-0.5">
-            {notes.map((note: { slug: string; title: string }) => (
-              <li>
-                <a
-                  href={`/notes/${note.slug}`}
-                  class={`block text-sm px-2 py-1.5 rounded truncate transition-colors ${
-                    currentSlug === note.slug
-                      ? "bg-neutral-800 text-white"
-                      : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-                  }`}
-                >
-                  {note.title}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </aside>
 
-    <!-- Center: Main content -->
-    <main class="flex-1 min-w-0 flex flex-col pl-12 lg:pl-0">
-      <article class="flex-1 overflow-auto">
-        <div class="max-w-3xl mx-auto px-6 py-8 lg:py-12">
+    <!-- Mobile overlay -->
+    <div id="sidebar-overlay" class="lg:hidden fixed inset-0 z-40 opacity-0 pointer-events-none transition-opacity" style="background: rgba(0,0,0,0.6);" aria-hidden="true"></div>
+
+    <!-- Layout shell: sidebar | main | right panel -->
+    <div class="flex min-h-screen justify-center items-start relative">
+      <!-- ─── Left Sidebar (240px) ─── -->
+      <aside
+        id="sidebar"
+        class="grain w-[240px] shrink-0 flex flex-col h-screen max-h-screen fixed inset-y-0 left-0 z-40 lg:sticky lg:top-0 lg:bottom-auto -translate-x-full lg:translate-x-0 transition-transform duration-200"
+        style="background: var(--color-bg); border-right: 1px solid var(--color-border);"
+      >
+        <div class="relative z-10 flex flex-col h-full overflow-hidden">
+          <!-- Top bar with Logo and Theme Toggle -->
+          <div class="px-4 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--color-border);">
+            <a href="/" class="flex items-center gap-2.5">
+              <!-- Graph node mark: center circle + 3 satellite dots + lines -->
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="10" cy="10" r="3.5" fill="var(--color-accent)" />
+                <circle cx="3.5" cy="4" r="1.8" fill="var(--color-accent)" opacity="0.7" />
+                <circle cx="17" cy="4.5" r="1.8" fill="var(--color-accent)" opacity="0.7" />
+                <circle cx="16" cy="16.5" r="1.8" fill="var(--color-accent)" opacity="0.7" />
+                <line x1="8" y1="8" x2="4.8" y2="5.2" stroke="var(--color-accent)" stroke-width="0.8" opacity="0.5" />
+                <line x1="12.5" y1="8.5" x2="15.8" y2="5.5" stroke="var(--color-accent)" stroke-width="0.8" opacity="0.5" />
+                <line x1="12" y1="12.5" x2="14.8" y2="15.2" stroke="var(--color-accent)" stroke-width="0.8" opacity="0.5" />
+              </svg>
+              <span style="font-family: var(--font-display); font-weight: 800; font-size: 14px; letter-spacing: 0.08em; color: var(--color-accent);">
+                MY-CRATE
+              </span>
+            </a>
+            <button
+              id="theme-toggle-btn"
+              class="flex items-center justify-center w-6 h-6 rounded-md transition-colors hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              aria-label="Toggle Theme"
+            >
+              <svg id="icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <svg id="icon-moon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Nav -->
+          <nav class="px-2 py-3 flex flex-col gap-0.5" style="border-bottom: 1px solid var(--color-border);">
+            <a
+              href="/"
+              class={`nav-link ${currentPage !== "graph" ? "active" : ""}`}
+            >
+              notes
+            </a>
+            <a
+              href="/graph"
+              class={`nav-link ${currentPage === "graph" ? "active" : ""}`}
+            >
+              graph
+            </a>
+          </nav>
+
+          <!-- Search -->
+          <div class="px-3 py-3" style="border-bottom: 1px solid var(--color-border);">
+            <SearchBar client:load />
+          </div>
+
+          <!-- Explorer -->
+          {notes.length > 0 && (
+            <div class="flex-1 overflow-y-auto px-2 py-3">
+              <p class="section-label px-3 mb-2">Explorer</p>
+              <ul class="flex flex-col">
+                {notes.map((note: { slug: string; title: string }) => (
+                  <li>
+                    <a
+                      href={`/notes/${note.slug}`}
+                      class={`explorer-item ${currentSlug === note.slug ? "active" : ""}`}
+                    >
+                      {note.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <!-- ─── Main Content (centered, max-w-2xl) ─── -->
+      <main class="flex-1 min-w-0 max-w-2xl flex flex-col">
+        <div class="page-content flex-1 px-6 lg:px-10 py-8 lg:py-10 pl-14 lg:pl-10">
           <slot />
         </div>
-      </article>
-      <footer class="border-t border-neutral-800/80 px-6 py-4 text-sm text-neutral-500">
-        built by me
-      </footer>
-    </main>
+      </main>
 
-    <!-- Right sidebar: ToC (note pages) or Graph -->
-    <aside class="w-64 shrink-0 border-l border-neutral-800/80 hidden lg:flex flex-col p-4 sticky top-0 self-start">
-      {toc.length > 0 ? (
-        <>
-          <p class="text-xs font-medium text-yellow-500 uppercase tracking-wider mb-3">On this page</p>
-          <nav class="space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
-            {toc.map((item: TocItem) => (
-              <a
-                href={`#${item.anchor}`}
-                class={`block text-sm text-neutral-400 hover:text-amber-400 transition-colors truncate ${
-                  item.level === "H1" ? "pl-0 font-medium" : item.level === "H2" ? "pl-2" : "pl-4"
-                }`}
-              >
-                {item.text}
-              </a>
-            ))}
-          </nav>
-        </>
-      ) : (
-        <>
-          <p class="text-xs font-medium text-yellow-500 uppercase tracking-wider mb-3">Graph</p>
-          <div class="h-[350px] w-[400px] rounded-lg border border-neutral-800 bg-neutral-900/50 overflow-hidden">
-            <GraphView client:load nodes={graph?.nodes ?? []} edges={graph?.edges ?? []} />
+      <!-- ─── Right Panel (200px, sticky) ─── -->
+      <aside
+        class="w-[200px] shrink-0 hidden xl:flex flex-col sticky top-0 h-screen max-h-screen overflow-y-auto"
+        style="border-left: 1px solid var(--color-border);"
+      >
+        <div class="px-4 py-6 flex flex-col gap-0">
+          <!-- TOC section (only on note pages) -->
+          {toc.length > 0 && (
+            <div class="mb-5">
+              <p class="section-label mb-3">On this page</p>
+              <nav class="flex flex-col">
+                {toc.map((item: TocItem) => (
+                  <a
+                    href={`#${item.anchor}`}
+                    class="toc-link"
+                    style={`padding-left: ${item.level === "H1" ? "0" : item.level === "H2" ? "0" : "12px"};`}
+                  >
+                    {item.text}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          )}
+
+          <!-- Separator if both TOC and graph -->
+          {toc.length > 0 && (
+            <div class="mb-5" style="border-top: 1px solid var(--color-border);"></div>
+          )}
+
+          <!-- Mini graph -->
+          <div>
+            <p class="section-label mb-3">Graph</p>
+            <div
+              class="overflow-hidden bg-dot-grid"
+              style="height: 160px; background-color: var(--color-bg-elevated); border: 1px solid var(--color-border);"
+            >
+              <GraphView client:load nodes={graph?.nodes ?? []} edges={graph?.edges ?? []} currentSlug={currentSlug} />
+            </div>
           </div>
-        </>
-      )}
-    </aside>
+        </div>
+      </aside>
     </div>
 
+    <!-- Sidebar toggle -->
     <script is:inline>
       (function () {
-        const toggle = document.getElementById("sidebar-toggle");
-        const sidebar = document.getElementById("sidebar");
-        const overlay = document.getElementById("sidebar-overlay");
-        const iconMenu = document.getElementById("icon-menu");
-        const iconClose = document.getElementById("icon-close");
+        var toggle = document.getElementById("sidebar-toggle");
+        var sidebar = document.getElementById("sidebar");
+        var overlay = document.getElementById("sidebar-overlay");
+        var iconMenu = document.getElementById("icon-menu");
+        var iconClose = document.getElementById("icon-close");
 
         function open() {
-          sidebar?.classList.remove("-translate-x-full");
-          overlay?.classList.remove("opacity-0", "pointer-events-none");
-          iconMenu?.classList.add("hidden");
-          iconClose?.classList.remove("hidden");
+          sidebar.classList.remove("-translate-x-full");
+          overlay.classList.remove("opacity-0", "pointer-events-none");
+          iconMenu.classList.add("hidden");
+          iconClose.classList.remove("hidden");
         }
         function close() {
-          sidebar?.classList.add("-translate-x-full");
-          overlay?.classList.add("opacity-0", "pointer-events-none");
-          iconMenu?.classList.remove("hidden");
-          iconClose?.classList.add("hidden");
+          sidebar.classList.add("-translate-x-full");
+          overlay.classList.add("opacity-0", "pointer-events-none");
+          iconMenu.classList.remove("hidden");
+          iconClose.classList.add("hidden");
         }
-        function toggleSidebar() {
-          sidebar?.classList.contains("-translate-x-full") ? open() : close();
-        }
-
-        toggle?.addEventListener("click", toggleSidebar);
+        toggle?.addEventListener("click", function () {
+          sidebar.classList.contains("-translate-x-full") ? open() : close();
+        });
         overlay?.addEventListener("click", close);
       })();
     </script>
+
+    <!-- Theme toggle -->
+    <script is:inline>
+      (function () {
+        var btn = document.getElementById("theme-toggle-btn");
+        var iconSun = document.getElementById("icon-sun");
+        var iconMoon = document.getElementById("icon-moon");
+
+        function updateUI() {
+          var isDark = document.documentElement.classList.contains("dark");
+          if (isDark) {
+            iconSun.classList.remove("hidden");
+            iconMoon.classList.add("hidden");
+          } else {
+            iconSun.classList.add("hidden");
+            iconMoon.classList.remove("hidden");
+          }
+        }
+
+        if (btn) {
+          updateUI();
+          btn.addEventListener("click", function () {
+            var isDark = document.documentElement.classList.toggle("dark");
+            localStorage.setItem("theme", isDark ? "dark" : "light");
+            updateUI();
+          });
+        }
+      })();
+    </script>
+
+    <!-- TOC scroll spy -->
+    {toc.length > 0 && (
+      <script is:inline>
+        (function () {
+          var links = document.querySelectorAll('.toc-link');
+          var items = [];
+          links.forEach(function (link) {
+            var id = link.getAttribute('href');
+            if (id) {
+              var el = document.getElementById(id.slice(1));
+              if (el) items.push({ el: el, link: link });
+            }
+          });
+          function update() {
+            var current = items[0];
+            for (var i = 0; i < items.length; i++) {
+              if (items[i].el.getBoundingClientRect().top <= 100) current = items[i];
+            }
+            links.forEach(function (l) { l.classList.remove('toc-active'); });
+            if (current) current.link.classList.add('toc-active');
+          }
+          window.addEventListener('scroll', update, { passive: true });
+          update();
+        })();
+      </script>
+    )}
+
+    <!-- KaTeX -->
     {withMath && (
       <script is:inline>
         (function () {
-          const opts = {
-            delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }],
+          var opts = {
+            delimiters: [
+              { left: "$$", right: "$$", display: true },
+              { left: "$", right: "$", display: false },
+            ],
             throwOnError: false,
           };
           function run() {
-            const el = document.querySelector(".note-content");
+            var el = document.querySelector(".note-content");
             if (el && typeof renderMathInElement === "function") {
               renderMathInElement(el, opts);
               return;
