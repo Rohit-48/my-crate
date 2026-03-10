@@ -114,9 +114,16 @@ const isGraphPage = currentPage === "graph";
       <!-- Right Sidebar -->
       {!isGraphPage && (
         <aside class="sidebar-right">
+          <div>
+            <p class="section-label" style="margin-bottom: 8px;">Graph</p>
+            <div style="height: 150px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 24px;">
+              <GraphView client:load nodes={graph?.nodes ?? []} edges={graph?.edges ?? []} currentSlug={currentSlug} />
+            </div>
+          </div>
+
           {toc.length > 0 && (
-            <div>
-              <p class="section-label" style="margin-bottom: 8px;">On this page</p>
+            <div style="margin-bottom: 24px;">
+              <p class="section-label" style="margin-bottom: 8px;">Table of Contents</p>
               <nav>
                 {toc.map((item: TocItem) => (
                   <a
@@ -130,15 +137,6 @@ const isGraphPage = currentPage === "graph";
               </nav>
             </div>
           )}
-
-          {toc.length > 0 && <hr class="sidebar-divider" />}
-
-          <div>
-            <p class="section-label" style="margin-bottom: 8px;">Graph</p>
-            <div style="height: 150px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 3px; overflow: hidden;">
-              <GraphView client:load nodes={graph?.nodes ?? []} edges={graph?.edges ?? []} currentSlug={currentSlug} />
-            </div>
-          </div>
 
           {currentSlug && (
             <>
