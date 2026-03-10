@@ -1,10 +1,8 @@
 mod db;
-mod graph;
 mod indexer;
 mod parser;
 
-use std::env::args;
-use clap::{arg, Parser};
+use clap::Parser;
 use std::path::PathBuf;
 
 
@@ -30,3 +28,4 @@ fn main() {
     println!("Done. {} notes written to db choom!", notes.len());
 
 }
+
