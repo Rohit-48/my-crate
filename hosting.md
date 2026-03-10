@@ -2,7 +2,7 @@
 
 MY-CRATE is composed of an Astro frontend, a Hono API (Bun), a Rust-based markdown indexer, a Rust webhook listener, and a local SQLite database.
 
-Because the app relies on the local file system (a `vault/` directory synced via Git) and a local SQLite database, **the most reliable way to host MY-CRATE is on a Virtual Private Server (VPS)** rather than serverless platforms (like Vercel or AWS Lambda).
+Because the app relies on the local file system (a `vault/` directory) and a local SQLite database, **the most reliable way to host MY-CRATE is on a Virtual Private Server (VPS)** rather than serverless platforms (like Vercel or AWS Lambda).
 
 This guide covers how to deploy MY-CRATE on popular cloud providers like DigitalOcean, AWS (EC2), and others.
 
@@ -12,7 +12,7 @@ This guide covers how to deploy MY-CRATE on popular cloud providers like Digital
 
 Regardless of your cloud provider, your server will need the following installed:
 
-- **Git** (to pull your vault and the project)
+- **Git** (to pull your project and vault)
 - **Node.js & npm** (for the Astro frontend)
 - **Bun** (for the Hono API)
 - **Rust & Cargo** (for compiling the indexer and webhook)
@@ -70,15 +70,15 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 ```
 
-### Clone Your Repositories
+### Clone Your Repository
 
 ```bash
-# Clone the MY-CRATE engine
+# Clone the MY-CRATE project
 git clone https://github.com/yourusername/my-crate.git
 cd my-crate
 
-# Clone your Obsidian Vault
-git clone https://github.com/yourusername/your-obsidian-vault.git ./vault
+# Note: Your Obsidian Vault lives inside the main project repository at `./vault/`
+# Ensure your vault files are present in that directory before proceeding.
 ```
 
 ### Build the Project
@@ -102,64 +102,103 @@ cd webhook && cargo build --release && cd ..
 
 ---
 
-## 4. Running the Application
+## 4. Initial Database Setup
 
-To keep the application running continuously in the background, we recommend using **PM2** or **Systemd**.
-
-### Using PM2 (Easiest)
-
-Install PM2 globally:
+Before starting the web services, you must run the indexer once to parse your markdown vault and generate the initial SQLite database:
 
 ```bash
-sudo npm install -g pm2
-```
-
-Create a PM2 ecosystem file `ecosystem.config.js` in the root of your project:
-
-```javascript
-module.exports = {
-  apps: [
-    {
-      name: "my-crate-api",
-      script: "bun",
-      args: "run index.ts",
-      cwd: "./api",
-      env: { PORT: 3001 }
-    },
-    {
-      name: "my-crate-web",
-      script: "npm",
-      args: "run start",
-      cwd: "./web",
-      env: { PORT: 4321, HOST: "127.0.0.1" }
-    },
-    {
-      name: "my-crate-webhook",
-      script: "./target/release/webhook",
-      cwd: "./webhook",
-      env: {
-        WEBHOOK_SECRET: "your_super_secret_string",
-        VAULT_PATH: "../vault",
-        DB_PATH: "../data/notes.db",
-        INDEXER_PATH: "../indexer/target/release/indexer",
-        PORT: 3002
-      }
-    }
-  ]
-}
-```
-
-Start the stack:
-
-```bash
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
+# Run the Rust indexer to populate ./data/notes.db
+./indexer/target/release/indexer --vault ./vault --db ./data/notes.db
 ```
 
 ---
 
-## 5. Setting Up Nginx Reverse Proxy & SSL
+## 5. Running the Application (Systemd)
+
+To keep the application running continuously and automatically restart on reboots, we recommend using **Systemd**, which is built into Ubuntu natively.
+
+You will create three service files for the API, Web, and Webhook components. Ensure you replace `/path/to/my-crate` with your actual absolute project path.
+
+### 1. API Service
+Create `/etc/systemd/system/my-crate-api.service`:
+
+```ini
+[Unit]
+Description=MY-CRATE API (Hono)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/path/to/my-crate/api
+ExecStart=/root/.bun/bin/bun run index.ts
+Environment=PORT=3001
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 2. Web Service (Astro SSR)
+Create `/etc/systemd/system/my-crate-web.service`:
+
+```ini
+[Unit]
+Description=MY-CRATE Web Frontend (Astro)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/path/to/my-crate/web
+ExecStart=/usr/bin/node ./dist/server/entry.mjs
+Environment=PORT=4321
+Environment=HOST=127.0.0.1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 3. Webhook Listener
+Create `/etc/systemd/system/my-crate-webhook.service`:
+
+```ini
+[Unit]
+Description=MY-CRATE Git Webhook Listener
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/path/to/my-crate/webhook
+ExecStart=/path/to/my-crate/webhook/target/release/webhook
+Environment=WEBHOOK_SECRET=your_super_secret_string
+Environment=VAULT_PATH=../vault
+Environment=DB_PATH=../data/notes.db
+Environment=INDEXER_PATH=../indexer/target/release/indexer
+Environment=PORT=3002
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Enable and Start Services
+
+```bash
+sudo systemctl daemon-reload
+
+sudo systemctl enable my-crate-api my-crate-web my-crate-webhook
+sudo systemctl start my-crate-api my-crate-web my-crate-webhook
+
+# Verify everything is running
+sudo systemctl status my-crate-api my-crate-web my-crate-webhook
+```
+
+---
+
+## 6. Setting Up Nginx Reverse Proxy & SSL
 
 To access your site via a domain name (e.g., `notes.yourdomain.com`) without typing ports, use Nginx.
 
@@ -181,7 +220,9 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # API Proxy (if accessed externally)
+    # API Proxy
+    # Note: The trailing slashes on both lines below are critical.
+    # They ensure the `/api` prefix is stripped before being passed to Hono.
     location /api/ {
         proxy_pass http://127.0.0.1:3001/;
         proxy_set_header Host $host;
@@ -208,16 +249,16 @@ sudo certbot --nginx -d notes.yourdomain.com
 
 ---
 
-## 6. Automating Updates (GitHub Webhooks)
+## 7. Automating Updates (GitHub Webhooks)
 
-When you push a new markdown file to your Obsidian vault repository, your server should update automatically.
+When you push updates to your `vault/` directory in GitHub, your server should update automatically.
 
-1. Go to your Obsidian Vault repository on **GitHub** > **Settings** > **Webhooks**.
+1. Go to your repository on **GitHub** > **Settings** > **Webhooks**.
 2. Click **Add webhook**.
 3. **Payload URL:** `https://notes.yourdomain.com/webhook`
 4. **Content type:** `application/json`
-5. **Secret:** Match the `WEBHOOK_SECRET` you set in your PM2 config.
+5. **Secret:** Match the `WEBHOOK_SECRET` you set in your systemd service.
 6. Trigger: Just the `push` event.
 7. Save.
 
-Now, whenever you push changes from Obsidian to GitHub, GitHub pings your Rust Webhook listener. The listener executes `git pull` on your local vault and runs the Rust indexer to rebuild the `notes.db` database in milliseconds!
+Now, whenever you push changes to GitHub, GitHub pings your Rust Webhook listener. The listener executes `git pull` locally and runs the Rust indexer to rebuild the `notes.db` database in milliseconds!

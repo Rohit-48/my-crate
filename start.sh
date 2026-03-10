@@ -4,30 +4,46 @@ set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-echo "Starting Obsidian Publish stack..."
+# ── Load .env ──────────────────────────────────────────────
+if [ -f "$ROOT/.env" ]; then
+  set -a; source "$ROOT/.env"; set +a
+else
+  echo "[warn] No .env found, using defaults"
+fi
 
-# Start Hono API
-(cd api && bun run index.ts) &
+WEBHOOK_SECRET="${WEBHOOK_SECRET:-dev}"
+API_PORT="${API_PORT:-3001}"
+WEB_PORT="${WEB_PORT:-4321}"
+WEBHOOK_PORT="${WEBHOOK_PORT:-3002}"
+
+echo "Starting MY-CRATE (dev mode)..."
+
+# ── Start services ─────────────────────────────────────────
+(cd api && PORT=$API_PORT bun run index.ts) &
 API_PID=$!
 
-# Start Astro frontend
-(cd web && npm run dev) &
+(cd web && PORT=$WEB_PORT npm run dev) &
 WEB_PID=$!
 
-# Start Webhook
-(cd webhook && WEBHOOK_SECRET=dev VAULT_PATH=./vault DB_PATH=./data/notes.db INDEXER_PATH=./indexer/target/debug/indexer cargo run) &
+(cd webhook && \
+  WEBHOOK_SECRET=$WEBHOOK_SECRET \
+  VAULT_PATH=./vault \
+  DB_PATH=./data/notes.db \
+  INDEXER_PATH=./indexer/target/debug/indexer \
+  PORT=$WEBHOOK_PORT \
+  cargo run) &
 WEBHOOK_PID=$!
 
+# ── Cleanup on exit ────────────────────────────────────────
 cleanup() {
   echo "Shutting down..."
   kill $API_PID $WEB_PID $WEBHOOK_PID 2>/dev/null || true
   exit 0
 }
-
 trap cleanup SIGINT SIGTERM
 
-echo "API (3001): PID $API_PID"
-echo "Web (4321): PID $WEB_PID"
-echo "Webhook: PID $WEBHOOK_PID"
+echo "  API     → http://localhost:$API_PORT"
+echo "  Web     → http://localhost:$WEB_PORT"
+echo "  Webhook → http://localhost:$WEBHOOK_PORT"
 echo "Press Ctrl+C to stop all"
 wait

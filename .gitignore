@@ -43,3 +43,5 @@ yarn-error.log*
 *.tmp
 *.temp
 core
+co.txt
+.env
