@@ -474,11 +474,3 @@ obsidian-publish/
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
-
-## Acknowledgments
-
-- [pulldown-cmark](https://github.com/raphlinus/pulldown-cmark) for Markdown parsing
-- [Hono](https://hono.dev/) for the API framework
-- [Astro](https://astro.build/) for the frontend architecture
-- [D3](https://d3js.org/) for graph visualization
-- [FlexSearch](https://github.com/nextapps-de/flexsearch) for client-side search

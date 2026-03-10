@@ -27,7 +27,7 @@ WEB_PORT="${WEB_PORT:-4321}"
 WEBHOOK_PORT="${WEBHOOK_PORT:-3002}"
 
 HOME_DIR=$(eval echo "~$SERVICE_USER")
-ROOT_DIR="$HOME_DIR/$(basename "$ROOT")"
+ROOT_DIR="$ROOT"
 
 # ── Dependency checks ──────────────────────────────────────
 log "Checking dependencies..."
