@@ -15,50 +15,32 @@ const notes = await notesRes.json();
 ---
 
 <BaseLayout title="Graph" notes={notes} currentPage="graph">
-  <header class="mb-6">
-    <p class="section-label mb-1">Graph</p>
-    <p
-      class="text-[13px]"
-      style="font-family: var(--font-body); color: var(--color-text-faint);"
-    >
-      {graph.nodes?.length ?? 0} nodes &middot; {graph.edges?.length ?? 0} edges
-    </p>
-  </header>
-
-  <div
-    class="relative w-full overflow-hidden bg-dot-grid"
-    style="height: calc(100vh - 200px); min-height: 400px; border: 1px solid var(--color-border); background-color: var(--color-bg-elevated);"
-  >
+  <div style="width: 100%; height: 100vh; position: relative; background: var(--bg);">
     <GraphView client:load nodes={graph.nodes} edges={graph.edges} />
 
-    <!-- Controls -->
-    <div
-      class="absolute bottom-4 right-4 flex flex-col gap-1.5 z-10"
-    >
+    <div style="position: absolute; bottom: 16px; right: 16px; display: flex; flex-direction: column; gap: 4px; z-index: 10;">
       <button
         id="graph-zoom-in"
-        class="w-8 h-8 flex items-center justify-center text-sm transition-colors"
-        style="background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-muted); font-family: var(--font-body);"
+        style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 3px; font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); padding: 6px 10px; cursor: pointer; transition: border-color 0.1s, color 0.1s;"
         aria-label="Zoom in"
-      >
-        +
-      </button>
+      >+</button>
       <button
         id="graph-zoom-out"
-        class="w-8 h-8 flex items-center justify-center text-sm transition-colors"
-        style="background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-muted); font-family: var(--font-body);"
+        style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 3px; font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); padding: 6px 10px; cursor: pointer; transition: border-color 0.1s, color 0.1s;"
         aria-label="Zoom out"
-      >
-        &minus;
-      </button>
+      >&minus;</button>
       <button
         id="graph-reset"
-        class="w-8 h-8 flex items-center justify-center text-[10px] transition-colors"
-        style="background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-muted); font-family: var(--font-body);"
+        style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 3px; font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); padding: 6px 10px; cursor: pointer; transition: border-color 0.1s, color 0.1s;"
         aria-label="Reset view"
-      >
-        R
-      </button>
+      >&#x2299;</button>
     </div>
   </div>
+
+  <style>
+    button:hover {
+      border-color: var(--accent-border) !important;
+      color: var(--text) !important;
+    }
+  </style>
 </BaseLayout>

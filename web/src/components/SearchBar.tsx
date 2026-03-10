@@ -86,17 +86,17 @@ function highlightMatch(text: string, query: string): React.ReactNode {
       <mark
         key={i}
         style={{
-          background: "var(--color-accent)",
+          background: "var(--accent)",
           color: "#000",
-          borderRadius: "1px",
-          padding: "0 1px",
+          borderRadius: "2px",
+          padding: "0 2px",
         }}
       >
         {part}
       </mark>
     ) : (
       part
-    )
+    ),
   );
 }
 
@@ -136,7 +136,7 @@ export default function SearchBar() {
       setResults([]);
       return;
     }
-    const raw = indexRef.current.search(query, { enrich: true, limit: 8 });
+    const raw = indexRef.current.search(query, { enrich: true, limit: 6 });
     setResults(toSearchResults(raw, notesRef.current));
     setSelectedIndex(-1);
   }, [query]);
@@ -159,7 +159,7 @@ export default function SearchBar() {
         inputRef.current?.blur();
       }
     },
-    [results, selectedIndex]
+    [results, selectedIndex],
   );
 
   useEffect(() => {
@@ -183,7 +183,7 @@ export default function SearchBar() {
   }, []);
 
   return (
-    <div className="relative w-full">
+    <div style={{ position: "relative", width: "100%" }}>
       <input
         ref={inputRef}
         type="text"
@@ -193,43 +193,46 @@ export default function SearchBar() {
         onBlur={() => setTimeout(() => setOpen(false), 200)}
         onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
         onKeyDown={handleKeyDown}
-        className="w-full outline-none transition-colors"
         style={{
-          fontFamily: "var(--font-body)",
-          fontSize: "12px",
-          background: "var(--color-bg-elevated)",
-          border: "1px solid var(--color-border)",
-          color: "var(--color-text)",
+          width: "100%",
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "3px",
           padding: "7px 10px",
+          fontFamily: "var(--font-mono)",
+          fontSize: "11px",
+          color: "var(--text)",
+          outline: "none",
+          transition: "border-color 0.1s",
         }}
         onFocusCapture={(e) => {
-          (e.target as HTMLInputElement).style.borderColor = "var(--color-accent-border)";
+          (e.target as HTMLInputElement).style.borderColor =
+            "var(--accent-border)";
         }}
         onBlurCapture={(e) => {
-          (e.target as HTMLInputElement).style.borderColor = "var(--color-border)";
+          (e.target as HTMLInputElement).style.borderColor = "var(--border)";
         }}
       />
-      <div 
-        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center rounded"
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: "10px",
-          color: "var(--color-text-faint)",
-          background: "var(--color-bg)",
-          border: "1px solid var(--color-border-dim)",
-          padding: "2px 4px",
-        }}
-      >
-        ⌘K
-      </div>
       {showDropdown && (
         <ul
           ref={listRef}
-          className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-y-auto animate-slide-down"
+          className="animate-slide-down"
           style={{
-            background: "var(--color-bg-elevated)",
-            border: "1px solid var(--color-border)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+            borderTop: "none",
+            borderRadius: "0 0 3px 3px",
+            boxShadow: "0 16px 40px rgba(0,0,0,0.6)",
+            maxHeight: "320px",
+            overflowY: "auto",
+            zIndex: 50,
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -237,35 +240,42 @@ export default function SearchBar() {
             <li
               key={r.slug}
               style={{
-                borderBottom: i < results.length - 1 ? "1px solid var(--color-border-dim)" : "none",
-                background: i === selectedIndex ? "var(--color-bg-hover)" : "transparent",
+                padding: "10px 12px",
+                borderBottom:
+                  i < results.length - 1
+                    ? "1px solid var(--border-dim)"
+                    : "none",
+                background:
+                  i === selectedIndex ? "var(--bg-hover)" : "transparent",
+                cursor: "pointer",
+                transition: "background 0.1s",
               }}
+              onMouseEnter={() => setSelectedIndex(i)}
             >
               <a
                 href={`/notes/${r.slug}`}
-                className="block transition-colors"
-                style={{ padding: "8px 10px", textDecoration: "none" }}
-                onMouseEnter={() => setSelectedIndex(i)}
+                style={{ display: "block", textDecoration: "none" }}
               >
                 <span
-                  className="block"
                   style={{
-                    fontFamily: "var(--font-body)",
+                    display: "block",
+                    fontFamily: "var(--font-mono)",
                     fontSize: "12px",
-                    fontWeight: 500,
-                    color: "var(--color-text)",
+                    color: "var(--text)",
                   }}
                 >
                   {highlightMatch(r.title, query)}
                 </span>
                 {r.preview && (
                   <p
-                    className="truncate"
                     style={{
-                      fontFamily: "var(--font-body)",
+                      fontFamily: "var(--font-mono)",
                       fontSize: "11px",
-                      color: "var(--color-text-faint)",
+                      color: "var(--text-muted)",
                       marginTop: "2px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {r.preview}

@@ -36,7 +36,7 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
       displayNodes = nodes.filter((n) => connectedSlugs.has(n.slug));
       displayEdges = edges.filter(
         (e) =>
-          connectedSlugs.has(e.source_slug) && connectedSlugs.has(e.target_slug)
+          connectedSlugs.has(e.source_slug) && connectedSlugs.has(e.target_slug),
       );
     }
 
@@ -49,10 +49,12 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
 
     const svg = d3.select(svgRef.current);
 
-    // Glow filter
     const defs = svg.append("defs");
     const filter = defs.append("filter").attr("id", "glow");
-    filter.append("feGaussianBlur").attr("stdDeviation", "2.5").attr("result", "blur");
+    filter
+      .append("feGaussianBlur")
+      .attr("stdDeviation", "3")
+      .attr("result", "blur");
     const merge = filter.append("feMerge");
     merge.append("feMergeNode").attr("in", "blur");
     merge.append("feMergeNode").attr("in", "SourceGraphic");
@@ -68,7 +70,6 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
 
     const localSlugIndex = new Map(displayNodes.map((n, i) => [n.slug, i]));
 
-    // Connection count per node
     const connCount = new Map<string, number>();
     displayEdges.forEach((e) => {
       connCount.set(e.source_slug, (connCount.get(e.source_slug) || 0) + 1);
@@ -76,7 +77,10 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
     });
 
     const links = displayEdges
-      .filter((e) => localSlugIndex.has(e.source_slug) && localSlugIndex.has(e.target_slug))
+      .filter(
+        (e) =>
+          localSlugIndex.has(e.source_slug) && localSlugIndex.has(e.target_slug),
+      )
       .map((e) => ({
         source: localSlugIndex.get(e.source_slug)!,
         target: localSlugIndex.get(e.target_slug)!,
@@ -85,23 +89,24 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
 
     const simulation = d3
       .forceSimulation(displayNodes as any)
-      .force("link", d3.forceLink(links).distance(80))
-      .force("charge", d3.forceManyBody().strength(-200))
+      .force(
+        "link",
+        d3.forceLink(links).distance(90).strength(0.5),
+      )
+      .force("charge", d3.forceManyBody().strength(-150))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide(30));
+      .force("collision", d3.forceCollide(18));
 
-    // Edges
     const link = g
       .append("g")
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("stroke", (d) => (d.is_embed ? "var(--color-accent)" : "var(--color-border)"))
-      .attr("stroke-width", 0.8)
-      .attr("stroke-dasharray", (d) => (d.is_embed ? "3,3" : "none"))
-      .attr("stroke-opacity", 0.5);
+      .attr("stroke", "#1a1a1a")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", (d) => (d.is_embed ? "4 4" : "none"))
+      .attr("stroke-opacity", 0.6);
 
-    // Nodes
     const node = g
       .append("g")
       .selectAll("g")
@@ -127,43 +132,40 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
             if (!event.active) simulation.alphaTarget(0);
             d.fx = null;
             d.fy = null;
-          }) as any
+          }) as any,
       );
 
-    // Circles
     node
       .append("circle")
       .attr("r", (d) => {
-        if (d.slug === currentSlug) return 6;
         const c = connCount.get(d.slug) || 0;
-        return Math.max(3, Math.min(7, 2.5 + c));
+        return 4 + Math.min(c * 1.5, 10);
       })
-      .attr("fill", (d) => {
-        if (d.slug === currentSlug) return "var(--color-accent)";
-        const c = connCount.get(d.slug) || 0;
-        return c >= 3 ? "var(--color-accent)" : "var(--color-text)";
-      })
-      .attr("fill-opacity", (d) => {
-        if (d.slug === currentSlug) return 1;
-        const c = connCount.get(d.slug) || 0;
-        return c >= 3 ? 1 : 0.5;
-      })
-      .attr("stroke", "none")
-      .attr("filter", (d) => d.slug === currentSlug ? "url(#glow)" : "none");
+      .attr("fill", (d) =>
+        d.slug === currentSlug ? "#FFD000" : "#1e1e1e",
+      )
+      .attr("stroke", (d) => (d.slug === currentSlug ? "none" : "#333"))
+      .attr("stroke-width", 1)
+      .attr("filter", (d) =>
+        d.slug === currentSlug ? "url(#glow)" : "none",
+      )
+      .style("transition", "fill 0.15s, r 0.15s");
 
-    // Labels (hidden, shown on hover, except for currentSlug)
     const label = node
       .append("text")
       .text((d) => d.title)
       .attr("x", 10)
       .attr("y", 3)
-      .attr("font-size", "10px")
-      .attr("font-family", "IBM Plex Mono, monospace")
-      .attr("fill", "var(--color-text)")
-      .attr("opacity", (d) => (d.slug === currentSlug ? 1 : 0))
+      .attr("font-size", "9px")
+      .attr("font-family", "Commit Mono, monospace")
+      .attr("fill", "#787878")
+      .attr("opacity", (d) => {
+        if (d.slug === currentSlug) return 1;
+        const c = connCount.get(d.slug) || 0;
+        return c >= 3 ? 0.7 : 0;
+      })
       .attr("pointer-events", "none");
 
-    // Hover
     node
       .on("mouseenter", function (_event, d) {
         const slug = d.slug;
@@ -173,39 +175,55 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
           if (e.target_slug === slug) connected.add(e.source_slug);
         });
 
-        node.select("circle").attr("fill-opacity", (n: any) =>
-          connected.has(n.slug) ? 1 : 0.08
-        );
-
-        link.attr("stroke-opacity", (l: any) => {
-          const s = displayNodes[typeof l.source === "object" ? l.source.index : l.source]?.slug;
-          const t = displayNodes[typeof l.target === "object" ? l.target.index : l.target]?.slug;
-          return connected.has(s!) && connected.has(t!) ? 0.7 : 0.03;
+        node.select("circle").attr("fill", (n: any) => {
+          if (n.slug === slug) return "#FFD000";
+          return connected.has(n.slug) ? "#333" : "#1e1e1e";
         });
 
-        link.attr("stroke", (l: any) => {
-          const s = displayNodes[typeof l.source === "object" ? l.source.index : l.source]?.slug;
-          const t = displayNodes[typeof l.target === "object" ? l.target.index : l.target]?.slug;
-          if (connected.has(s!) && connected.has(t!)) return l.is_embed ? "var(--color-accent)" : "var(--color-text-muted)";
-          return l.is_embed ? "var(--color-accent)" : "var(--color-border)";
+        node
+          .select("circle")
+          .attr("fill-opacity", (n: any) =>
+            connected.has(n.slug) ? 1 : 0.15,
+          );
+
+        link.attr("stroke-opacity", (l: any) => {
+          const s =
+            displayNodes[
+              typeof l.source === "object" ? l.source.index : l.source
+            ]?.slug;
+          const t =
+            displayNodes[
+              typeof l.target === "object" ? l.target.index : l.target
+            ]?.slug;
+          return connected.has(s!) && connected.has(t!) ? 0.6 : 0.05;
         });
 
         d3.select(this).select("text").attr("opacity", 1);
+        d3.select(this)
+          .select("circle")
+          .attr("filter", "url(#glow)");
+
         node
           .filter((n: any) => connected.has(n.slug) && n.slug !== slug)
           .select("text")
-          .attr("opacity", 0.5);
-        d3.select(this).select("circle").attr("filter", "url(#glow)");
+          .attr("opacity", 0.6);
       })
       .on("mouseleave", function () {
-        node.select("circle").attr("fill-opacity", (d: any) => {
+        node.select("circle").attr("fill", (d: any) =>
+          d.slug === currentSlug ? "#FFD000" : "#1e1e1e",
+        );
+        node.select("circle").attr("fill-opacity", 1);
+        node
+          .select("circle")
+          .attr("filter", (d: any) =>
+            d.slug === currentSlug ? "url(#glow)" : "none",
+          );
+        link.attr("stroke-opacity", 0.6);
+        label.attr("opacity", (d: any) => {
           if (d.slug === currentSlug) return 1;
           const c = connCount.get(d.slug) || 0;
-          return c >= 3 ? 1 : 0.5;
+          return c >= 3 ? 0.7 : 0;
         });
-        node.select("circle").attr("filter", (d: any) => d.slug === currentSlug ? "url(#glow)" : "none");
-        link.attr("stroke-opacity", 0.5).attr("stroke", (d: any) => (d.is_embed ? "var(--color-accent)" : "var(--color-border)"));
-        label.attr("opacity", (d: any) => (d.slug === currentSlug ? 1 : 0));
       });
 
     simulation.on("tick", () => {
@@ -217,22 +235,28 @@ export default function GraphView({ nodes, edges, currentSlug }: Props) {
       node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
 
-    // External zoom controls
     const zoomIn = document.getElementById("graph-zoom-in");
     const zoomOut = document.getElementById("graph-zoom-out");
     const resetBtn = document.getElementById("graph-reset");
-    zoomIn?.addEventListener("click", () => svg.transition().duration(300).call(zoom.scaleBy, 1.3));
-    zoomOut?.addEventListener("click", () => svg.transition().duration(300).call(zoom.scaleBy, 0.7));
-    resetBtn?.addEventListener("click", () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity));
+    zoomIn?.addEventListener("click", () =>
+      svg.transition().duration(300).call(zoom.scaleBy, 1.3),
+    );
+    zoomOut?.addEventListener("click", () =>
+      svg.transition().duration(300).call(zoom.scaleBy, 0.7),
+    );
+    resetBtn?.addEventListener("click", () =>
+      svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity),
+    );
 
-    return () => { simulation.stop(); };
+    return () => {
+      simulation.stop();
+    };
   }, [nodes, edges, currentSlug]);
 
   return (
     <svg
       ref={svgRef}
-      className="w-full h-full"
-      style={{ background: "transparent" }}
+      style={{ width: "100%", height: "100%", background: "transparent" }}
     />
   );
 }

@@ -20,64 +20,67 @@ if (noteRes.status === 404 || note.error) {
 
 const wordCount = note.raw_md ? note.raw_md.split(/\s+/).length : (note.html ? note.html.replace(/<[^>]*>/g, '').split(/\s+/).length : 0);
 const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
+let html = note.html || "";
+html = html.replace(/\[\[([^\]]+)\]\]/g, (_: string, s: string) =>
+  `<a href="/notes/${s.toLowerCase().replace(/\s+/g, '-')}" class="wikilink">${s}</a>`
+);
+
+const safeBacklinks = Array.isArray(backlinks) ? backlinks : [];
 ---
 
-<BaseLayout title={note.title} notes={notes} currentSlug={slug} withMath={true} toc={note.toc ?? []}>
-  <div id="reading-progress"></div>
+<BaseLayout
+  title={note.title}
+  notes={notes}
+  currentSlug={slug}
+  withMath={true}
+  toc={note.toc ?? []}
+  backlinks={safeBacklinks}
+>
+  <div id="progress-bar"></div>
 
   <article>
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+      <a href="/">vault</a>
+      <span class="sep">/</span>
+      <span style="color: var(--text-muted);">{note.title}</span>
+    </div>
+
     <!-- Title -->
-    <h1 style="font-family: var(--font-display); font-weight: 800; font-size: 2rem; letter-spacing: -0.03em; line-height: 1.15; color: var(--color-text); margin: 0 0 12px;">
+    <h1 style="font-family: var(--font-sans); font-weight: 800; font-size: 1.8rem; letter-spacing: -0.02em; line-height: 1.15; color: var(--text); margin: 0 0 12px;">
       {note.title}
     </h1>
 
-    <!-- Metadata: tags + reading time -->
-    <div class="flex items-center gap-3 flex-wrap" style="margin-bottom: 16px;">
+    <!-- Tags + reading time -->
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 20px; margin-bottom: 28px; border-bottom: 1px solid var(--border);">
       {note.tags?.length > 0 && (
-        <span class="flex gap-2">
+        <span style="display: flex; gap: 8px;">
           {note.tags.map((tag: string) => (
             <a
               href={`/tags/${tag}`}
-              style="font-family: var(--font-body); font-size: 12px; color: var(--color-accent); text-decoration: none;"
+              style="font-family: var(--font-mono); font-size: 12px; color: var(--accent); text-decoration: none;"
             >
               #{tag}
             </a>
           ))}
         </span>
       )}
-      <span style="font-family: var(--font-body); font-size: 12px; color: var(--color-text-muted);">
+      {note.tags?.length > 0 && (
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);">&middot;</span>
+      )}
+      <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);">
         {readingTime} min read
       </span>
     </div>
 
-    <!-- Separator -->
-    <div style="border-top: 1px solid var(--color-border); margin-bottom: 32px;"></div>
-
     <!-- Content -->
-    <div class="prose-crate note-content" set:html={note.html} />
-
-    <!-- Backlinks -->
-    {Array.isArray(backlinks) && backlinks.length > 0 && (
-      <section style="border-top: 1px solid var(--color-border); margin-top: 48px; padding-top: 24px;">
-        <p class="section-label mb-3">Linked from</p>
-        <div class="flex flex-col gap-1.5">
-          {backlinks.map((b: { slug: string; title: string }) => (
-            <a
-              href={`/notes/${b.slug}`}
-              style="font-family: var(--font-body); font-size: 13px; color: var(--color-accent); text-decoration: none; transition: text-shadow 150ms ease-out;"
-              class="hover:underline hover:drop-shadow-[0_0_8px_var(--color-accent-border)]"
-            >
-              {b.title}
-            </a>
-          ))}
-        </div>
-      </section>
-    )}
+    <div class="prose note-content" set:html={html} />
   </article>
 
   <script is:inline>
     (function () {
-      var bar = document.getElementById("reading-progress");
+      var bar = document.getElementById("progress-bar");
       if (!bar) return;
       function update() {
         var docH = document.documentElement.scrollHeight - window.innerHeight;
