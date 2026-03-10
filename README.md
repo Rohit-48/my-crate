@@ -1,410 +1,168 @@
 # MY-CRATE
 
-> Self-hosted publishing for your Obsidian vault. No subscriptions, no lock-in, full control.
+Self-hosted publishing platform for your Obsidian vault. Write in Obsidian, push to GitHub, read anywhere.
 
-Obsidian Publish is a fast, self-hosted platform that transforms your Obsidian vault into a beautiful, browsable website. It indexes your markdown files, serves them via a REST API, and provides a modern web frontend with search, backlinks, and interactive graph visualization.
+![MY-CRATE screenshot](images/screenshot.png)
 
-![MY-CRATE Preview](./images/preview.png)
+## Why
 
----
+Most Obsidian publishing solutions are either paid (Obsidian Publish), locked to a platform (Vercel/Netlify with limitations), or too complex to self-host. MY-CRATE runs on any VPS, costs ~$6/month, and gives you full control over your notes.
 
-## Features
+- Push a note to GitHub → site updates automatically (no manual deploys)
+- Full-text search, backlinks, knowledge graph, LaTeX, tags
+- Your data stays on your server
 
-- **Instant Search** - Full-text search with FlexSearch, no backend query needed
-- **Backlinks** - Automatically discover linked references between notes
-- **Interactive Graph** - D3-powered force-directed graph of your note relationships
-- **LaTeX Support** - Renders math expressions with KaTeX
-- **Table of Contents** - Auto-generated ToC from headings, sticky sidebar navigation
-- **Tag System** - Browse notes by tags with dedicated tag pages
-- **Git Webhook** - Auto-reindex on push with HMAC verification
-- **Mobile-First** - Responsive design with hamburger navigation
+## Stack
 
----
+| Layer | Tech |
+|-------|------|
+| Indexer | Rust (clap, pulldown-cmark, rusqlite) |
+| API | Hono.js (Bun) |
+| Webhook | Rust (Axum) |
+| Frontend | Astro + React + D3 + Tailwind |
+| Database | SQLite |
+| Proxy | Nginx |
 
-## Quick Start
+## Requirements
 
-Get a local instance running in under 5 minutes.
+- A VPS running Ubuntu 22.04 or 24.04 (1GB RAM minimum, $6/mo on DigitalOcean)
+- A GitHub account with your Obsidian vault in a repo
+- A domain name (optional but recommended)
 
-### Prerequisites
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| [Rust](https://rustup.rs/) | 1.70+ | Indexer & webhook |
-| [Bun](https://bun.sh/) | 1.0+ | API server |
-| [Node.js](https://nodejs.org/) | 20+ | Frontend build |
-
-### 1. Clone and Setup
+## Quick start
 
 ```bash
-git clone <repository>
-cd obsidian-publish
-
-# Create data directory
-mkdir -p data
+git clone https://github.com/Rohit-48/my-crate-
+cd my-crate-
+cp env.example .env
 ```
 
-### 2. Index Your Vault
+Edit `.env` with your values:
 
 ```bash
-cd indexer
-cargo run --release -- \
-  --vault ../vault \
-  --db ../data/notes.db
+# Generate a secure webhook secret
+openssl rand -hex 32
+
+# Edit .env
+WEBHOOK_SECRET=your-generated-secret
+SERVICE_USER=your-unix-username   # e.g. ubuntu, void
 ```
 
-The indexer parses all `.md` files, extracts frontmatter, wikilinks, and generates HTML.
-
-### 3. Start All Services
-
-From the project root:
+Run setup:
 
 ```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+That's it. Your site is live at `http://your-server-ip`.
+
+## What setup.sh does
+
+1. Checks all dependencies are installed
+2. Builds the Rust indexer and webhook binaries
+3. Installs API and frontend dependencies
+4. Runs the indexer to populate the SQLite database from your vault
+5. Creates and enables three systemd services (API, webhook, frontend)
+6. Configures Nginx as a reverse proxy
+
+## Connecting your Obsidian vault
+
+Your vault lives at `./vault/` inside the repo. Add your markdown files there and commit them, or point it at an existing vault repo via a git submodule.
+
+To auto-update the site when you push:
+
+1. Go to your vault GitHub repo - **Settings - Webhooks - Add webhook**
+2. Set **Payload URL** to `https://your-domain.com/webhook`
+3. Set **Content type** to `application/json`
+4. Set **Secret** to the same value as `WEBHOOK_SECRET` in your `.env`
+5. Select **Just the push event**
+6. Save
+
+Now every push to your vault repo triggers `git pull` + re-index on the server automatically.
+
+## Adding SSL (recommended)
+
+Once your domain's DNS points to your server:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com
+```
+
+Certbot handles certificate issuance and auto-renewal.
+
+## Local development
+
+```bash
+cp env.example .env
+# edit .env - set WEBHOOK_SECRET=dev is fine locally
+chmod +x start.sh
 ./start.sh
 ```
 
-This starts three services:
+The dev script starts all three services and watches for changes. Open `http://localhost:4321`.
+
+> **Note:** The webhook runs the debug binary in dev mode (`cargo run`). For production always use `setup.sh` which builds release binaries.
+
+## Services
+
+After setup, three systemd services run your stack:
 
 | Service | Port | Description |
 |---------|------|-------------|
-| API | 3001 | Hono.js REST API |
-| Web | 4321 | Astro dev server |
-| Webhook | 3002 | Git push listener |
+| `my-crate-api` | 3001 | Hono.js API, reads SQLite |
+| `my-crate-webhook` | 3002 | Rust webhook listener |
+| `my-crate-web` | 4321 | Astro SSR frontend |
 
-Visit `http://localhost:4321` to see your published vault.
-
----
-
-## Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Vault/    │────▶│  Indexer    │────▶│  SQLite DB  │
-│   .md files │     │    (Rust)   │     │             │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                               │
-                        ┌──────────────────────┘
-                        ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Webhook   │────▶│  Hono API   │◀────│   Astro     │
-│   (Rust)    │     │   (Bun)     │     │  Frontend   │
-└─────────────┘     └─────────────┘     └─────────────┘
-       ▲                                            │
-       └────────────────────────────────────────────┘
-                    Git push triggers reindex
-```
-
-### Components
-
-#### Indexer (`/indexer`)
-
-Rust binary that walks your vault and populates the database.
+Useful commands:
 
 ```bash
-cargo run --release -- --vault /path/to/vault --db /path/to/db.sqlite
+# Check status
+sudo systemctl status my-crate-api my-crate-webhook my-crate-web
+
+# View logs
+sudo journalctl -u my-crate-api -f
+
+# Restart a service
+sudo systemctl restart my-crate-api
 ```
 
-**What it indexes:**
+## Re-indexing manually
 
-- Frontmatter (title, description, tags)
-- Markdown → HTML (via `pulldown-cmark`)
-- Wikilinks `[[Note Title]]` and embeds `![[Image]]`
-- Table of contents from headings
-- LaTeX detection (`$...$` and `$$...$$`)
-
-#### API (`/api`)
-
-Hono.js server providing REST endpoints.
-
-```typescript
-// Start standalone
-cd api && bun run index.ts
-```
-
-#### Web (`/web`)
-
-Astro frontend with React islands.
+If you add notes directly to the server without going through GitHub:
 
 ```bash
-cd web && npm run dev     # Development
-npm run build             # Production build
+./indexer/target/release/indexer --vault ./vault --db ./data/notes.db
 ```
-
-#### Webhook (`/webhook`)
-
-Rust service that listens for git pushes and triggers reindexing.
-
-```bash
-cd webhook
-WEBHOOK_SECRET=your-secret \
-VAULT_PATH=./vault \
-DB_PATH=./data/notes.db \
-INDEXER_PATH=./indexer/target/release/indexer \
-cargo run
-```
-
----
-
-## API Reference
-
-Base URL: `http://localhost:3001`
-
-### List Notes
-
-```http
-GET /api/notes
-```
-
-```json
-[
-  {
-    "slug": "getting-started",
-    "title": "Getting Started",
-    "description": "Overview of the platform",
-    "tags": ["guide"],
-    "has_latex": false
-  }
-]
-```
-
-### Get Note
-
-```http
-GET /api/notes/:slug
-```
-
-```json
-{
-  "slug": "getting-started",
-  "title": "Getting Started",
-  "html": "<p>Welcome...</p>",
-  "toc": [
-    { "level": "H1", "text": "Getting Started", "anchor": "getting-started" },
-    { "level": "H2", "text": "Installation", "anchor": "installation" }
-  ],
-  "tags": ["guide"],
-  "description": "Overview",
-  "frontmatter": { "title": "Getting Started" }
-}
-```
-
-### Get Backlinks
-
-```http
-GET /api/notes/:slug/backlinks
-```
-
-```json
-[
-  { "slug": "related-topic", "title": "Related Topic" }
-]
-```
-
-### Search Index
-
-```http
-GET /api/search
-```
-
-Returns all notes with `raw_md` field for client-side FlexSearch indexing.
-
-### Graph Data
-
-```http
-GET /api/graph
-```
-
-```json
-{
-  "nodes": [{ "slug": "note-1", "title": "Note 1" }],
-  "edges": [
-    { "source_slug": "note-1", "target_slug": "note-2", "is_embed": 0 }
-  ]
-}
-```
-
-### Tags
-
-```http
-GET /api/tags
-GET /api/tags/:tag
-```
-
----
 
 ## Configuration
 
-### Environment Variables
+All configuration lives in `.env`. Copy `env.example` to get started.
 
-#### API
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `WEBHOOK_SECRET` | Yes | - | Secret to verify GitHub webhook payloads |
+| `SERVICE_USER` | Yes | - | Unix user that runs the systemd services |
+| `API_PORT` | No | `3001` | Hono API port |
+| `WEB_PORT` | No | `4321` | Astro frontend port |
+| `WEBHOOK_PORT` | No | `3002` | Webhook listener port |
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3001` | Server port |
-| `DATABASE_URL` | `./data/notes.db` | SQLite database path |
+> **Warning:** Never commit `.env` to git. It's in `.gitignore` by default.
 
-#### Webhook
+## Firewall (recommended)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `WEBHOOK_SECRET` | Yes | HMAC secret for verification |
-| `VAULT_PATH` | Yes | Path to git repository |
-| `DB_PATH` | Yes | Path to SQLite database |
-| `INDEXER_PATH` | Yes | Path to indexer binary |
-| `PORT` | `3002` | Webhook server port |
-
-#### Web
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `API_URL` | `http://localhost:3001` | API base URL |
-
----
-
-## Development
-
-### Running Individual Services
+Lock down the server to only expose necessary ports:
 
 ```bash
-# Terminal 1: API
-cd api && bun run index.ts
-
-# Terminal 2: Frontend
-cd web && npm run dev
-
-# Terminal 3: Webhook (optional)
-cd webhook && WEBHOOK_SECRET=dev VAULT_PATH=./vault DB_PATH=./data/notes.db INDEXER_PATH=../indexer/target/debug/indexer cargo run
+sudo ufw allow 22    # SSH
+sudo ufw allow 80    # HTTP
+sudo ufw allow 443   # HTTPS
+sudo ufw enable
 ```
 
-### Database Schema
-
-The indexer creates these tables:
-
-```sql
-notes       -- slug, title, html, raw_md, frontmatter, toc, etc.
-links       -- source_slug, target_slug, is_embed
-tags        -- tag name
-tag_notes   -- tag ↔ note mapping
-```
-
-### Adding a New Page
-
-Create `.astro` files in `web/src/pages/`:
-
-```astro
----
-import BaseLayout from "../layouts/BaseLayout.astro";
-
-const API = "http://localhost:3001";
-const res = await fetch(`${API}/api/notes`);
-const notes = await res.json();
----
-
-<BaseLayout title="My Page" notes={notes}>
-  <h1>Hello World</h1>
-</BaseLayout>
-```
-
----
-
-## Deployment
-
-### Building for Production
-
-```bash
-# 1. Build indexer
-cd indexer && cargo build --release
-
-# 2. Build webhook
-cd webhook && cargo build --release
-
-# 3. Build frontend
-cd web && npm run build
-
-# 4. Start production API
-cd api && bun run index.ts  # Or use PM2, systemd, etc.
-```
-
-### Docker (Example)
-
-```dockerfile
-FROM oven/bun:1 as api
-WORKDIR /app
-COPY api/ .
-RUN bun install
-EXPOSE 3001
-CMD ["bun", "run", "index.ts"]
-
-FROM node:20 as web
-WORKDIR /app
-COPY web/ .
-RUN npm ci && npm run build
-EXPOSE 4321
-CMD ["npm", "run", "preview"]
-```
-
----
-
-## NixOS Support
-
-This project includes a Nix flake for reproducible development.
-
-```bash
-nix develop  # Enter dev shell
-```
-
-See [NIXOS_SETUP.md](NIXOS_SETUP.md) for detailed instructions.
-
----
-
-## Project Structure
-
-```
-obsidian-publish/
-├── api/              # Hono.js REST API (Bun)
-│   ├── index.ts
-│   └── routes/
-├── web/              # Astro frontend
-│   ├── src/
-│   │   ├── components/   # React islands
-│   │   ├── layouts/
-│   │   ├── pages/
-│   │   └── styles/
-│   └── package.json
-├── indexer/          # Rust markdown indexer
-│   └── src/
-│       ├── main.rs
-│       ├── db.rs
-│       └── parser.rs
-├── webhook/          # Rust git webhook
-│   └── src/
-│       └── main.rs
-├── data/             # SQLite database
-├── vault/            # Your Obsidian vault (git repo)
-└── start.sh          # Start all services
-```
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes
-4. Run tests: `cargo test` (Rust), `npm test` (Web)
-5. Submit a pull request
-
----
+This blocks direct access to internal ports (3001, 3002, 4321).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## Acknowledgments
-
-- [pulldown-cmark](https://github.com/raphlinus/pulldown-cmark) for Markdown parsing
-- [Hono](https://hono.dev/) for the API framework
-- [Astro](https://astro.build/) for the frontend architecture
-- [D3](https://d3js.org/) for graph visualization
-- [FlexSearch](https://github.com/nextapps-de/flexsearch) for client-side search
+MIT
