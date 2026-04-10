@@ -35,6 +35,8 @@ pub struct ParsedNote {
     pub toc: Vec<Heading>,
     pub has_latex: bool,
     pub formatter: Value,
+    pub images: Vec<String>,
+    pub videos: Vec<String>
 }
 
 pub fn parse_note(path: &Path) -> Result<ParsedNote, Box<dyn Error>> {
@@ -55,7 +57,7 @@ pub fn parse_note(path: &Path) -> Result<ParsedNote, Box<dyn Error>> {
         .to_string();
 
     // wikilinks and embeds
-    let (links, embeds) = extract_links(markdown);
+    let (links, embeds, images, videos) = extract_links(markdown);
 
     // parse content → html, toc, has_latex
     let (html, toc, has_latex) = parse_content(markdown);
@@ -77,6 +79,8 @@ pub fn parse_note(path: &Path) -> Result<ParsedNote, Box<dyn Error>> {
         toc,
         has_latex,
         formatter,
+        images,
+        videos
     })
 }
 
@@ -96,21 +100,31 @@ fn split_formatter(raw: &str) -> (&str, &str) {
 // embeds and wikilinks
 static LINK_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(!)?\[\[([^\]|]+)(?:\|[^\]]+)?\]\]").unwrap());
-fn extract_links(markdown: &str) -> (Vec<String>, Vec<String>) {
+static IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "svg"];
+static VIDEO_EXTS: &[&str] = &["mp4", "mov", "webm", "mkv"];
+fn extract_links(markdown: &str) -> (Vec<String>, Vec<String>, Vec<String>, Vec<String>) {
     let mut wikilinks = Vec::new();
     let mut embeds = Vec::new();
+    let mut images: Vec<String> = Vec::new();
+    let mut videos: Vec<String> = Vec::new();
 
     for cap in LINK_RE.captures_iter(markdown) {
         // using static
         let is_embed = cap.get(1).is_some();
         let target = cap.get(2).map(|m| m.as_str().trim().to_string()).unwrap();
         if is_embed {
+            let ext = target.rsplit('.').next().unwrap_or("").to_lowercase();
+            if IMAGE_EXTS.contains(&ext.as_str()){
+                images.push(target.clone());
+            }else if VIDEO_EXTS.contains(&ext.as_str()){
+                videos.push(target.clone());
+            }
             embeds.push(target);
         } else {
             wikilinks.push(target);
         }
     }
-    (wikilinks, embeds)
+    (wikilinks, embeds, images, videos)
 }
 
 // title and tags
@@ -206,4 +220,12 @@ fn parse_content(markdown: &str) -> (String, Vec<Heading>, bool) {
     pulldown_cmark::html::push_html(&mut html, events.into_iter());
 
     (html, toc, has_latex)
+}
+
+
+// image processing in house bruddhas!
+pub fn convert_to_webp(input:&Path, output: &Path) -> Result<(), Box<dyn Error>>{
+    let img = image::ImageReader::open(input)?.decode()?;
+    img.save(output)?;
+    Ok(())
 }
