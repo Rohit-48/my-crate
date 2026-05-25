@@ -3,6 +3,9 @@ export const prerender = false;
 
 import BaseLayout from "../../layouts/BaseLayout.astro";
 
+const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
+const VIDEO_EXTS = ["mp4", "mov", "webm", "mkv"];
+
 const { slug } = Astro.params;
 const API = "http://localhost:3001";
 const [noteRes, notesRes, backlinksRes] = await Promise.all([
@@ -22,6 +25,25 @@ const wordCount = note.raw_md ? note.raw_md.split(/\s+/).length : (note.html ? n
 const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
 let html = note.html || "";
+
+// replace embed wikilinks ![[file]] with img/video tags
+html = html.replace(/&lt;!--\s*\[\[([^\]]+)\]\]\s*--&gt;|!?\[\[([^\]]+)\]\]/g, (_: string, s1: string, s2: string) => {
+  const target = s1 || s2;
+  if (!target) return _;
+  const ext = target.split('.').pop()?.toLowerCase() || "";
+  const stem = target.replace(/\.[^.]+$/, "");
+
+  if (IMAGE_EXTS.includes(ext)) {
+    return `<img src="/vault/.cache/${stem}.webp" alt="${stem}" class="note-image" loading="lazy" />`;
+  } else if (VIDEO_EXTS.includes(ext)) {
+    return `<video controls class="note-video" poster="/vault/.cache/thumb-${stem}.webp">
+      <source src="/vault/${target}" type="video/${ext}" />
+      Your browser does not support video.
+    </video>`;
+  }
+  return _;
+});
+
 html = html.replace(/\[\[([^\]]+)\]\]/g, (_: string, s: string) =>
   `<a href="/notes/${s.toLowerCase().replace(/\s+/g, '-')}" class="wikilink">${s}</a>`
 );
