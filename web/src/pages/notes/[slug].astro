@@ -21,31 +21,39 @@ if (noteRes.status === 404 || note.error) {
   return new Response(null, { status: 404, statusText: "Not found" });
 }
 
-const wordCount = note.raw_md ? note.raw_md.split(/\s+/).length : (note.html ? note.html.replace(/<[^>]*>/g, '').split(/\s+/).length : 0);
+const wordCount = note.raw_md
+  ? note.raw_md.split(/\s+/).length
+  : note.html
+    ? note.html.replace(/<[^>]*>/g, "").split(/\s+/).length
+    : 0;
 const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
 let html = note.html || "";
 
-// replace embed wikilinks ![[file]] with img/video tags
-html = html.replace(/&lt;!--\s*\[\[([^\]]+)\]\]\s*--&gt;|!?\[\[([^\]]+)\]\]/g, (_: string, s1: string, s2: string) => {
-  const target = s1 || s2;
-  if (!target) return _;
-  const ext = target.split('.').pop()?.toLowerCase() || "";
-  const stem = target.replace(/\.[^.]+$/, "");
+// rendered wikilinks that are actually image/video embeds
+html = html.replace(
+  /<a href="\/notes\/([^"]+\.(png|jpg|jpeg|gif|webp|svg|mp4|mov|webm|mkv))">[^<]*<\/a>/gi,
+  (_: string, target: string, ext: string) => {
+    const stem = target.replace(/\.[^.]+$/, "");
+    const imgExts = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
+    const vidExts = ["mp4", "mov", "webm", "mkv"];
 
-  if (IMAGE_EXTS.includes(ext)) {
-    return `<img src="/vault/.cache/${stem}.webp" alt="${stem}" class="note-image" loading="lazy" />`;
-  } else if (VIDEO_EXTS.includes(ext)) {
-    return `<video controls class="note-video" poster="/vault/.cache/thumb-${stem}.webp">
+    if (imgExts.includes(ext.toLowerCase())) {
+      return `<img src="/vault/.cache/${stem}.webp" alt="${stem}" class="note-image" loading="lazy" />`;
+    } else if (vidExts.includes(ext.toLowerCase())) {
+      return `<video controls class="note-video" poster="/vault/.cache/thumb-${stem}.webp">
       <source src="/vault/${target}" type="video/${ext}" />
       Your browser does not support video.
     </video>`;
-  }
-  return _;
-});
+    }
+    return _;
+  },
+);
 
-html = html.replace(/\[\[([^\]]+)\]\]/g, (_: string, s: string) =>
-  `<a href="/notes/${s.toLowerCase().replace(/\s+/g, '-')}" class="wikilink">${s}</a>`
+html = html.replace(
+  /\[\[([^\]]+)\]\]/g,
+  (_: string, s: string) =>
+    `<a href="/notes/${s.toLowerCase().replace(/\s+/g, "-")}" class="wikilink">${s}</a>`,
 );
 
 const safeBacklinks = Array.isArray(backlinks) ? backlinks : [];
@@ -70,28 +78,40 @@ const safeBacklinks = Array.isArray(backlinks) ? backlinks : [];
     </div>
 
     <!-- Title -->
-    <h1 style="font-family: var(--font-sans); font-weight: 800; font-size: 1.8rem; letter-spacing: -0.02em; line-height: 1.15; color: var(--text); margin: 0 0 12px;">
+    <h1
+      style="font-family: var(--font-sans); font-weight: 800; font-size: 1.8rem; letter-spacing: -0.02em; line-height: 1.15; color: var(--text); margin: 0 0 12px;"
+    >
       {note.title}
     </h1>
 
     <!-- Tags + reading time -->
-    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 20px; margin-bottom: 28px; border-bottom: 1px solid var(--border);">
-      {note.tags?.length > 0 && (
-        <span style="display: flex; gap: 8px;">
-          {note.tags.map((tag: string) => (
-            <a
-              href={`/tags/${tag}`}
-              style="font-family: var(--font-mono); font-size: 12px; color: var(--accent); text-decoration: none;"
-            >
-              #{tag}
-            </a>
-          ))}
-        </span>
-      )}
-      {note.tags?.length > 0 && (
-        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);">&middot;</span>
-      )}
-      <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);">
+    <div
+      style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 20px; margin-bottom: 28px; border-bottom: 1px solid var(--border);"
+    >
+      {
+        note.tags?.length > 0 && (
+          <span style="display: flex; gap: 8px;">
+            {note.tags.map((tag: string) => (
+              <a
+                href={`/tags/${tag}`}
+                style="font-family: var(--font-mono); font-size: 12px; color: var(--accent); text-decoration: none;"
+              >
+                #{tag}
+              </a>
+            ))}
+          </span>
+        )
+      }
+      {
+        note.tags?.length > 0 && (
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);">
+            &middot;
+          </span>
+        )
+      }
+      <span
+        style="font-family: var(--font-mono); font-size: 12px; color: var(--text-faint);"
+      >
         {readingTime} min read
       </span>
     </div>
