@@ -30,13 +30,14 @@ const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
 let html = note.html || "";
 
-// rendered wikilinks that are actually image/video embeds
+// replace rendered wikilinks that are actually image/video embeds
 html = html.replace(
   /<a href="\/notes\/([^"]+\.(png|jpg|jpeg|gif|webp|svg|mp4|mov|webm|mkv))">[^<]*<\/a>/gi,
   (_: string, target: string, ext: string) => {
     const stem = target.replace(/\.[^.]+$/, "");
     const imgExts = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
     const vidExts = ["mp4", "mov", "webm", "mkv"];
+
 
     if (imgExts.includes(ext.toLowerCase())) {
       return `<img src="/vault/.cache/${stem}.webp" alt="${stem}" class="note-image" loading="lazy" />`;
